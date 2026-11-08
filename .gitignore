@@ -1,0 +1,5 @@
+data/
+*.pyc
+__pycache__/
+*.v[0-9]*
+scrub.json

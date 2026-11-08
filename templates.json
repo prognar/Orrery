@@ -1,0 +1,1318 @@
+{
+ "_doc": "Service templates. match: names/tags = regex on guest name/tags; http = [{port, path, re, scheme?}] fingerprint (regex on <title>+body+Server header); ports = TCP ports that hint at the service. look = planet body in bodies3d.js ('globe' = drawn by traits3d.js, 'generic' = plain planet). tier = default prominence (active|watch|quiet|hidden). trait = live-data integration key (null = look only). creds = what the setup UI asks for to enable live data. media = can be promoted to the external media giant. ours = runs in the reference lab.",
+ "version": 1,
+ "categories": [
+  "media",
+  "network",
+  "home",
+  "storage",
+  "monitoring",
+  "productivity",
+  "infra",
+  "security",
+  "dev",
+  "games",
+  "ai"
+ ],
+ "templates": [
+  {
+   "key": "plex",
+   "label": "Plex Media Server",
+   "category": "media",
+   "look": "telescope",
+   "tier": "active",
+   "trait": "plex",
+   "media": true,
+   "ours": true,
+   "match": {
+    "names": [
+     "^plex",
+     "plex$"
+    ],
+    "ports": [
+     32400
+    ],
+    "http": [
+     {
+      "port": 32400,
+      "path": "/identity",
+      "re": "MediaContainer"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "X-Plex-Token",
+     "hint": "plex.tv → any item → Get Info → View XML; token= in the URL"
+    }
+   ]
+  },
+  {
+   "key": "jellyfin",
+   "label": "Jellyfin",
+   "category": "media",
+   "look": "telescope",
+   "tier": "active",
+   "trait": "jellyfin",
+   "media": true,
+   "match": {
+    "names": [
+     "jellyfin"
+    ],
+    "ports": [
+     8096,
+     8920
+    ],
+    "http": [
+     {
+      "port": 8096,
+      "path": "/System/Info/Public",
+      "re": "Jellyfin"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Dashboard → API Keys → +"
+    }
+   ]
+  },
+  {
+   "key": "emby",
+   "label": "Emby",
+   "category": "media",
+   "look": "telescope",
+   "tier": "active",
+   "trait": "emby",
+   "media": true,
+   "match": {
+    "names": [
+     "^emby"
+    ],
+    "ports": [
+     8096
+    ],
+    "http": [
+     {
+      "port": 8096,
+      "path": "/emby/System/Info/Public",
+      "re": "\"ServerName\"(?![\\s\\S]*Jellyfin)"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Settings → Advanced → API Keys"
+    }
+   ]
+  },
+  {
+   "key": "seerr",
+   "label": "Seerr / Overseerr / Jellyseerr",
+   "category": "media",
+   "look": "telescope",
+   "tier": "active",
+   "trait": "seerr",
+   "ours": true,
+   "match": {
+    "names": [
+     "seerr",
+     "ombi"
+    ],
+    "ports": [
+     5055
+    ],
+    "http": [
+     {
+      "port": 5055,
+      "path": "/",
+      "re": "seerr"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Settings → General → API Key"
+    }
+   ]
+  },
+  {
+   "key": "audiobookshelf",
+   "label": "Audiobookshelf",
+   "category": "media",
+   "look": "gramophone",
+   "tier": "active",
+   "trait": "abs",
+   "ours": true,
+   "match": {
+    "names": [
+     "audiobook",
+     "^abs$"
+    ],
+    "ports": [
+     13378
+    ],
+    "http": [
+     {
+      "port": 13378,
+      "path": "/",
+      "re": "<title>[^<]*Audiobookshelf"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "<title>[^<]*Audiobookshelf"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API token",
+     "hint": "Settings → Users → your user → API token"
+    }
+   ]
+  },
+  {
+   "key": "navidrome",
+   "label": "Navidrome",
+   "category": "media",
+   "look": "gramophone",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "navidrome"
+    ],
+    "ports": [
+     4533
+    ],
+    "http": [
+     {
+      "port": 4533,
+      "path": "/app/",
+      "re": "<title>[^<]*Navidrome"
+     }
+    ]
+   }
+  },
+  {
+   "key": "sonarr",
+   "label": "Sonarr",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": "arr",
+   "match": {
+    "names": [
+     "sonarr"
+    ],
+    "ports": [
+     8989
+    ],
+    "http": [
+     {
+      "port": 8989,
+      "path": "/",
+      "re": "<title>[^<]*Sonarr"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Settings → General → API Key"
+    }
+   ]
+  },
+  {
+   "key": "radarr",
+   "label": "Radarr",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": "arr",
+   "match": {
+    "names": [
+     "radarr"
+    ],
+    "ports": [
+     7878
+    ],
+    "http": [
+     {
+      "port": 7878,
+      "path": "/",
+      "re": "<title>[^<]*Radarr"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Settings → General → API Key"
+    }
+   ]
+  },
+  {
+   "key": "prowlarr",
+   "label": "Prowlarr",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "prowlarr",
+     "jackett"
+    ],
+    "ports": [
+     9696,
+     9117
+    ],
+    "http": [
+     {
+      "port": 9696,
+      "path": "/",
+      "re": "<title>[^<]*Prowlarr"
+     },
+     {
+      "port": 9117,
+      "path": "/UI/Dashboard",
+      "re": "Jackett"
+     }
+    ]
+   }
+  },
+  {
+   "key": "qbittorrent",
+   "label": "qBittorrent",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": "qbit",
+   "match": {
+    "names": [
+     "qbit",
+     "torrent"
+    ],
+    "ports": [
+     8080,
+     8090
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>[^<]*qBittorrent"
+     },
+     {
+      "port": 8090,
+      "path": "/",
+      "re": "<title>[^<]*qBittorrent"
+     }
+    ]
+   }
+  },
+  {
+   "key": "transmission",
+   "label": "Transmission",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "transmission"
+    ],
+    "ports": [
+     9091
+    ],
+    "http": [
+     {
+      "port": 9091,
+      "path": "/transmission/web/",
+      "re": "Transmission"
+     }
+    ]
+   }
+  },
+  {
+   "key": "tracearr",
+   "label": "Tracearr / Tautulli",
+   "category": "media",
+   "look": "radar",
+   "tier": "quiet",
+   "trait": "tracearr",
+   "ours": true,
+   "match": {
+    "names": [
+     "tracearr",
+     "tautulli"
+    ],
+    "ports": [
+     8181
+    ],
+    "http": [
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "<title>[^<]*Tracearr"
+     },
+     {
+      "port": 8181,
+      "path": "/",
+      "re": "<title>[^<]*Tautulli"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key"
+    }
+   ]
+  },
+  {
+   "key": "immich",
+   "label": "Immich / Noodle Gallery",
+   "category": "media",
+   "look": "globe",
+   "tier": "quiet",
+   "trait": "immich",
+   "ours": true,
+   "match": {
+    "names": [
+     "immich",
+     "gallery",
+     "photos?$"
+    ],
+    "ports": [
+     2283
+    ],
+    "http": [
+     {
+      "port": 2283,
+      "path": "/api/server/ping",
+      "re": "pong"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API key",
+     "hint": "Account Settings → API Keys"
+    }
+   ]
+  },
+  {
+   "key": "romm",
+   "label": "RomM",
+   "category": "games",
+   "look": "cartridge",
+   "tier": "active",
+   "trait": "romm",
+   "ours": true,
+   "match": {
+    "names": [
+     "romm",
+     "retro",
+     "emul"
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>RomM"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "<title>RomM"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "Client API token",
+     "hint": "Profile → Client API Tokens (scopes roms.read, platforms.read)"
+    }
+   ]
+  },
+  {
+   "key": "pihole",
+   "label": "Pi-hole",
+   "category": "network",
+   "look": "blackhole",
+   "tier": "active",
+   "trait": "pihole",
+   "ours": true,
+   "match": {
+    "names": [
+     "pi-?hole"
+    ],
+    "ports": [
+     53
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/admin/",
+      "re": "Pi-hole"
+     },
+     {
+      "port": 8080,
+      "path": "/admin/",
+      "re": "Pi-hole"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "password",
+     "label": "Web password / app password",
+     "hint": "Settings → Web interface / API → App password"
+    }
+   ]
+  },
+  {
+   "key": "adguard",
+   "label": "AdGuard Home",
+   "category": "network",
+   "look": "blackhole",
+   "tier": "active",
+   "trait": "adguard",
+   "match": {
+    "names": [
+     "adguard"
+    ],
+    "ports": [
+     53,
+     3000
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/",
+      "re": "<title>[^<]*AdGuard Home"
+     },
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "<title>[^<]*AdGuard Home"
+     },
+     {
+      "port": 80,
+      "path": "/login.html",
+      "re": "AdGuard"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "username",
+     "label": "Username"
+    },
+    {
+     "key": "password",
+     "label": "Password"
+    }
+   ]
+  },
+  {
+   "key": "npm",
+   "label": "Nginx Proxy Manager",
+   "category": "network",
+   "look": "junction",
+   "tier": "active",
+   "trait": "npm",
+   "ours": true,
+   "match": {
+    "names": [
+     "^npm$",
+     "proxy-?manager",
+     "nginx"
+    ],
+    "ports": [
+     81
+    ],
+    "http": [
+     {
+      "port": 81,
+      "path": "/",
+      "re": "<title>[^<]*Nginx Proxy Manager"
+     }
+    ]
+   }
+  },
+  {
+   "key": "traefik",
+   "label": "Traefik",
+   "category": "network",
+   "look": "junction",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "traefik"
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/dashboard/",
+      "re": "Traefik"
+     }
+    ]
+   }
+  },
+  {
+   "key": "caddy",
+   "label": "Caddy",
+   "category": "network",
+   "look": "junction",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "caddy"
+    ],
+    "ports": [
+     2019
+    ]
+   }
+  },
+  {
+   "key": "netviz",
+   "label": "NetViz",
+   "category": "network",
+   "look": "globe",
+   "tier": "active",
+   "trait": "netviz",
+   "ours": true,
+   "match": {
+    "names": [
+     "netviz"
+    ],
+    "ports": [
+     8099
+    ],
+    "http": [
+     {
+      "port": 8099,
+      "path": "/",
+      "re": "<title>netviz"
+     }
+    ]
+   }
+  },
+  {
+   "key": "tailscale",
+   "label": "Tailscale / WireGuard",
+   "category": "network",
+   "look": "junction",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "tailscale",
+     "wireguard",
+     "wg-?easy",
+     "headscale",
+     "vpn"
+    ],
+    "ports": [
+     51820,
+     41641
+    ]
+   }
+  },
+  {
+   "key": "guacamole",
+   "label": "Apache Guacamole",
+   "category": "infra",
+   "look": "monitor",
+   "tier": "hidden",
+   "trait": "guac",
+   "ours": true,
+   "match": {
+    "names": [
+     "guacamole",
+     "guac"
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/guacamole/",
+      "re": "guac"
+     }
+    ]
+   }
+  },
+  {
+   "key": "homeassistant",
+   "label": "Home Assistant",
+   "category": "home",
+   "look": "house",
+   "tier": "active",
+   "trait": "ha",
+   "ours": true,
+   "match": {
+    "names": [
+     "home-?assistant",
+     "^hass",
+     "^haos"
+    ],
+    "ports": [
+     8123
+    ],
+    "http": [
+     {
+      "port": 8123,
+      "path": "/",
+      "re": "<title>[^<]*Home Assistant"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "Long-lived access token",
+     "hint": "Profile → Security → Long-lived access tokens"
+    }
+   ]
+  },
+  {
+   "key": "frigate",
+   "label": "Frigate NVR",
+   "category": "home",
+   "look": "monitor",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "frigate",
+     "nvr"
+    ],
+    "ports": [
+     5000,
+     8971
+    ],
+    "http": [
+     {
+      "port": 5000,
+      "path": "/",
+      "re": "<title>[^<]*Frigate"
+     },
+     {
+      "port": 8971,
+      "path": "/",
+      "re": "<title>[^<]*Frigate",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "zigbee2mqtt",
+   "label": "Zigbee2MQTT",
+   "category": "home",
+   "look": "house",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "zigbee",
+     "z2m"
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>[^<]*Zigbee2MQTT"
+     }
+    ]
+   }
+  },
+  {
+   "key": "mosquitto",
+   "label": "Mosquitto MQTT",
+   "category": "home",
+   "look": "junction",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "mqtt",
+     "mosquitto",
+     "emqx"
+    ],
+    "ports": [
+     1883
+    ]
+   }
+  },
+  {
+   "key": "nodered",
+   "label": "Node-RED",
+   "category": "home",
+   "look": "cog",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "node-?red"
+    ],
+    "ports": [
+     1880
+    ],
+    "http": [
+     {
+      "port": 1880,
+      "path": "/",
+      "re": "<title>[^<]*Node-RED"
+     }
+    ]
+   }
+  },
+  {
+   "key": "nextcloud",
+   "label": "Nextcloud",
+   "category": "storage",
+   "look": "papers",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "nextcloud",
+     "owncloud"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/status.php",
+      "re": "Nextcloud"
+     },
+     {
+      "port": 443,
+      "path": "/status.php",
+      "re": "Nextcloud",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "truenas",
+   "label": "TrueNAS / OpenMediaVault",
+   "category": "storage",
+   "look": "vault",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "truenas",
+     "freenas",
+     "omv",
+     "openmediavault",
+     "^nas"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/",
+      "re": "TrueNAS|openmediavault"
+     },
+     {
+      "port": 443,
+      "path": "/",
+      "re": "TrueNAS|openmediavault",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "syncthing",
+   "label": "Syncthing",
+   "category": "storage",
+   "look": "papers",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "syncthing"
+    ],
+    "ports": [
+     8384,
+     22000
+    ],
+    "http": [
+     {
+      "port": 8384,
+      "path": "/",
+      "re": "<title>[^<]*Syncthing"
+     }
+    ]
+   }
+  },
+  {
+   "key": "paperless",
+   "label": "Paperless-ngx",
+   "category": "productivity",
+   "look": "papers",
+   "tier": "quiet",
+   "trait": "paperless",
+   "ours": true,
+   "match": {
+    "names": [
+     "paperless"
+    ],
+    "ports": [
+     8000
+    ],
+    "http": [
+     {
+      "port": 8000,
+      "path": "/",
+      "re": "<title>[^<]*Paperless"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "token",
+     "label": "API token",
+     "hint": "Profile → API Auth Token"
+    }
+   ]
+  },
+  {
+   "key": "wiki",
+   "label": "Wiki.js / BookStack",
+   "category": "productivity",
+   "look": "book",
+   "tier": "quiet",
+   "trait": "wiki",
+   "ours": true,
+   "match": {
+    "names": [
+     "wiki",
+     "bookstack",
+     "docs$"
+    ],
+    "http": [
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "Wiki\\.js"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "BookStack|Wiki\\.js"
+     }
+    ]
+   }
+  },
+  {
+   "key": "vaultwarden",
+   "label": "Vaultwarden",
+   "category": "security",
+   "look": "vault",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "vaultwarden",
+     "bitwarden"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/alive",
+      "re": "\\d{4}-\\d\\d-\\d\\d"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "<title>[^<]*Vaultwarden"
+     },
+     {
+      "port": 8000,
+      "path": "/",
+      "re": "<title>[^<]*Vaultwarden"
+     }
+    ]
+   }
+  },
+  {
+   "key": "authentik",
+   "label": "Authentik / Authelia",
+   "category": "security",
+   "look": "vault",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "authentik",
+     "authelia",
+     "keycloak",
+     "^sso"
+    ],
+    "ports": [
+     9000,
+     9091
+    ],
+    "http": [
+     {
+      "port": 9000,
+      "path": "/",
+      "re": "authentik"
+     },
+     {
+      "port": 9091,
+      "path": "/",
+      "re": "Authelia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "uptimekuma",
+   "label": "Uptime Kuma",
+   "category": "monitoring",
+   "look": "heart",
+   "tier": "watch",
+   "trait": "kuma",
+   "ours": true,
+   "match": {
+    "names": [
+     "uptime",
+     "kuma",
+     "gatus",
+     "status"
+    ],
+    "ports": [
+     3001
+    ],
+    "http": [
+     {
+      "port": 3001,
+      "path": "/",
+      "re": "<title>[^<]*Uptime Kuma"
+     }
+    ]
+   },
+   "creds": [
+    {
+     "key": "slug",
+     "label": "Status page slug",
+     "hint": "Status Pages → the slug in its URL"
+    }
+   ]
+  },
+  {
+   "key": "netdata",
+   "label": "Netdata",
+   "category": "monitoring",
+   "look": "barchart",
+   "tier": "watch",
+   "trait": "netdata",
+   "ours": true,
+   "match": {
+    "names": [
+     "netdata"
+    ],
+    "ports": [
+     19999
+    ],
+    "http": [
+     {
+      "port": 19999,
+      "path": "/",
+      "re": "Netdata"
+     }
+    ]
+   }
+  },
+  {
+   "key": "grafana",
+   "label": "Grafana / Prometheus",
+   "category": "monitoring",
+   "look": "barchart",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "grafana",
+     "prometheus",
+     "influx",
+     "loki"
+    ],
+    "ports": [
+     9090,
+     8086
+    ],
+    "http": [
+     {
+      "port": 3000,
+      "path": "/login",
+      "re": "<title>[^<]*Grafana"
+     },
+     {
+      "port": 9090,
+      "path": "/graph",
+      "re": "Prometheus"
+     }
+    ]
+   }
+  },
+  {
+   "key": "pbs",
+   "label": "Proxmox Backup Server",
+   "category": "infra",
+   "look": "vault",
+   "tier": "watch",
+   "trait": "pbs",
+   "ours": true,
+   "match": {
+    "names": [
+     "^pbs",
+     "backup"
+    ],
+    "ports": [
+     8007
+    ],
+    "http": [
+     {
+      "port": 8007,
+      "path": "/",
+      "re": "Proxmox Backup Server",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "database",
+   "label": "Database (Postgres / MariaDB / Redis)",
+   "category": "infra",
+   "look": "dbstack",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "postgres",
+     "pgsql",
+     "maria",
+     "mysql",
+     "^db$",
+     "redis",
+     "valkey",
+     "mongo"
+    ],
+    "ports": [
+     5432,
+     3306,
+     6379,
+     27017
+    ]
+   }
+  },
+  {
+   "key": "docker",
+   "label": "Docker host (Portainer / Dockge)",
+   "category": "infra",
+   "look": "cog",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "docker",
+     "portainer",
+     "dockge",
+     "komodo"
+    ],
+    "ports": [
+     9443,
+     9000,
+     5001
+    ],
+    "http": [
+     {
+      "port": 9443,
+      "path": "/",
+      "re": "Portainer",
+      "scheme": "https"
+     },
+     {
+      "port": 9000,
+      "path": "/",
+      "re": "Portainer"
+     },
+     {
+      "port": 5001,
+      "path": "/",
+      "re": "Dockge"
+     }
+    ]
+   }
+  },
+  {
+   "key": "dashboard",
+   "label": "Homepage / Homarr / Dashy",
+   "category": "infra",
+   "look": "monitor",
+   "tier": "hidden",
+   "trait": null,
+   "match": {
+    "names": [
+     "homepage",
+     "homarr",
+     "dashy",
+     "heimdall",
+     "organizr"
+    ],
+    "ports": [
+     7575
+    ],
+    "http": [
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "<title>Homepage"
+     },
+     {
+      "port": 7575,
+      "path": "/",
+      "re": "<title>[^<]*Homarr"
+     },
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>[^<]*(Heimdall|Dashy)"
+     }
+    ]
+   }
+  },
+  {
+   "key": "gitea",
+   "label": "Gitea / Forgejo",
+   "category": "dev",
+   "look": "cog",
+   "tier": "quiet",
+   "trait": null,
+   "match": {
+    "names": [
+     "gitea",
+     "forgejo",
+     "gitlab",
+     "^git$"
+    ],
+    "http": [
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "<title>[^<]*(Gitea|Forgejo)"
+     },
+     {
+      "port": 80,
+      "path": "/users/sign_in",
+      "re": "GitLab"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ollama",
+   "label": "Ollama / Open WebUI",
+   "category": "ai",
+   "look": "armillary",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "ollama",
+     "open-?webui",
+     "llm",
+     "^ai$"
+    ],
+    "ports": [
+     11434
+    ],
+    "http": [
+     {
+      "port": 11434,
+      "path": "/",
+      "re": "Ollama is running"
+     },
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>[^<]*Open WebUI"
+     },
+     {
+      "port": 3000,
+      "path": "/",
+      "re": "<title>[^<]*Open WebUI"
+     }
+    ]
+   }
+  },
+  {
+   "key": "isponsorblocktv",
+   "label": "iSponsorBlockTV",
+   "category": "media",
+   "look": "generic",
+   "tier": "hidden",
+   "trait": null,
+   "ours": true,
+   "match": {
+    "names": [
+     "sponsorblock"
+    ]
+   }
+  },
+  {
+   "key": "orrery",
+   "label": "Orrery",
+   "category": "monitoring",
+   "look": "armillary",
+   "tier": "hidden",
+   "trait": "orrery",
+   "ours": true,
+   "match": {
+    "names": [
+     "^orrery"
+    ],
+    "http": [
+     {
+      "port": 8080,
+      "path": "/",
+      "re": "<title>Orrery"
+     }
+    ]
+   }
+  },
+  {
+   "key": "generic",
+   "label": "Generic",
+   "category": "infra",
+   "look": "generic",
+   "tier": "quiet",
+   "trait": null,
+   "match": {}
+  }
+ ]
+}

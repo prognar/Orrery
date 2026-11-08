@@ -1,0 +1,19 @@
+[Unit]
+Description=Orrery: 3D observatory for Proxmox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=orrery
+Environment=ORRERY_CFG=/opt/orrery/data/config.json
+ExecStart=/usr/bin/python3 /opt/orrery/app/server.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/orrery/data
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
