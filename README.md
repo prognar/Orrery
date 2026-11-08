@@ -225,6 +225,14 @@ systemctl enable --now orrery
 
 **3. Open `http://<container-ip>:8080`** and follow the wizard.
 
+**Optional settings** in `data/config.json`, for things Orrery can't discover:
+
+| Key | Example | What it does |
+|---|---|---|
+| `media.ip` | `"192.168.1.40"` | LAN address of the PC running Plex/Jellyfin, so remote-desktop sessions to it point at the media giant |
+| `links.wiki` | `"http://192.168.1.20:3000"` | Makes recent wiki edits clickable |
+| `traits.netviz.home` | `[51.5, -0.12]` | Where NetViz arcs land on the globe (your rough location); defaults to the middle of the US |
+
 To update: `cd /opt/orrery && git pull && systemctl restart orrery`. Your settings and keys live in `data/`, which updates never touch.
 
 ## Security and privacy

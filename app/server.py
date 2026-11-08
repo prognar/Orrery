@@ -494,7 +494,8 @@ MEDIA_IP = (CFG.get("media") or {}).get("ip") or ""   # LAN IP of the media-serv
 
 def _private(ip):
     try:
-        return ipaddress.ip_address(ip).is_private
+        a = ipaddress.ip_address(ip)
+        return a.version == 4 and a.is_private
     except ValueError:
         return False
 _nv = {"seq": 0, "ev": [], "flows": 0, "bytes": 0, "win": [], "ok": False, "err": None, "since": 0, "lock": threading.Lock()}
@@ -790,6 +791,7 @@ def backup_trait():
 
 
 # ---------------------------------------------------------------- the quiet bodies: one live signal each (read-only)
+LINKS = CFG.get("links") or {}   # optional: {"wiki": "http://wiki.lan:3000"} makes recent wiki edits clickable
 PROBE_FILE = CFG.get("probe_file", "/mnt/host-temps/probe.json")   # orrery-probe.service on the host: npm requests, guac sockets, wiki edits
 KU, PL, SE, TA, HA = (TR.get(k) or {} for k in ("kuma", "paperless", "seerr", "tracearr", "ha"))
 _viewers = {}
@@ -948,6 +950,8 @@ def svc_bundle():
     out = {k: f.result() for k, f in jobs.items()}
     pr = _probe() or {}
     out["npm"], out["guac"], out["wiki"] = pr.get("npm"), pr.get("guac"), pr.get("wiki")
+    if isinstance(out.get("wiki"), dict) and LINKS.get("wiki"):
+        out["wiki"] = {**out["wiki"], "base": LINKS["wiki"].rstrip("/")}
     out["ipmap"] = cached("svc:ipmap", 120, ipmap)
     now = time.time()
     for ip in [ip for ip, t in _viewers.items() if now - t > 20]:
