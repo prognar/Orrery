@@ -1,0 +1,12 @@
+[Unit]
+Description=Orrery Tailscale peer feed (/run/orrery-temps/tailscale.json)
+After=tailscaled.service
+
+[Service]
+ExecStart=/usr/local/bin/orrery-tailscale
+Restart=always
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

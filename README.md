@@ -86,6 +86,15 @@ Everything the wizard sets lives on the **Setup** screen afterwards. Services st
 
 <img src="docs/images/setup.jpg" alt="Setup screen: connections panel with services that need an API key highlighted" width="100%">
 
+## Other servers
+
+The orrery is your Proxmox host, and its brass instruments are the guests. Anything else on your network can join as a **planet** beyond it, with the services it runs as **moons**: the PC that runs Plex, a NAS, a Raspberry Pi running Home Assistant.
+
+- Orrery suggests machines from your router's client list and your Tailscale peers (when those feeds are available, see below), fingerprints what each one runs, and lists them under **Setup → Other servers**. You switch on the ones you want, or add one by address.
+- Give each a type: **Media server**, **NAS**, **Desktop / PC**, **Home hub** or **Server**. A media server running Plex is drawn as the big inhabited world, with streams orbiting and downloads spiralling in.
+- The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
+- If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
+
 ## Supported services
 
 Orrery recognises these by name, Proxmox tags, open ports and, most reliably, by what their web page or API says. Anything it doesn't recognise still gets a planet, and you can assign it one of these looks by hand.
@@ -232,6 +241,8 @@ systemctl enable --now orrery
 | `media.ip` | `"192.168.1.40"` | LAN address of the PC running Plex/Jellyfin, so remote-desktop sessions to it point at the media giant |
 | `links.wiki` | `"http://192.168.1.20:3000"` | Makes recent wiki edits clickable |
 | `traits.netviz.home` | `[51.5, -0.12]` | Where NetViz arcs land on the globe (your rough location); defaults to the middle of the US |
+| `tailscale_file` | `"/mnt/host-temps/tailscale.json"` (default) | Tailscale peers to suggest as other servers. [`deploy/host/orrery-tailscale`](deploy/host/orrery-tailscale) writes it on the Proxmox host |
+| `router_file` | `"/mnt/host-temps/router.json"` (default) | Your router's client list, for the Network view and server suggestions |
 
 To update: `cd /opt/orrery && git pull && systemctl restart orrery`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Your settings and keys live in `data/`, which updates never touch.
 

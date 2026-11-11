@@ -372,6 +372,7 @@ def plex_bundle():
     out["host"] = PLEX.get("name", "plex")
     out["addr"] = urllib.parse.urlsplit(PLEX_URL).hostname
     out["tailnet"] = _tailnet(out["addr"])
+    out["guest"] = worlds.plex_guest()                  # Plex on a Proxmox guest: drawn as that guest, not as a planet
     out["ts"] = time.time()
     return out
 
@@ -1000,6 +1001,15 @@ def trait_img(kind, ident, size="thumbnail"):
 
 import nextapi
 nextapi.init(pve_get, NODE, os.path.dirname(os.path.abspath(CFG_PATH)), CFG)
+import worlds
+def _all_guest_ips():
+    """Every guest address, VMs included (from discovery), so guests are never offered as 'other servers'."""
+    m = {g["ip"]: g.get("name") for g in ((nextapi._disc.get("result") or {}).get("guests") or {}).values() if g.get("ip")}
+    li = _guest_ips()
+    if isinstance(li, dict) and "__error" not in li:
+        m.update(li)
+    return m
+worlds.init(os.path.dirname(os.path.abspath(CFG_PATH)), CFG, _all_guest_ips, nextapi.settings, nextapi.save)
 
 class H(BaseHTTPRequestHandler):
     server_version = "Orrery/1.0"

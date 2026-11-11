@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { makeTraits } from './traits3d.js';
 import { bodyFor } from './bodies3d.js';
+import { makeWorlds, LINK_COL } from './worlds3d.js';
 
 // layout contract with blender/build_orrery.py
 const RADII3 = [3.6, 6.2, 8.8], RADII2 = [4.6, 8.2], ARM_Y = [-0.9, -1.35, -1.8];
@@ -231,7 +232,7 @@ export async function start(host, status = () => {}) {
   const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.16, map: glowTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   pts.frustumCulled = false; scene.add(pts);
   const parts = [];
-  const cIn = hdr('#5fb3a1', 2.4), cOut = hdr('#e0663b', 2.4), cAme = hdr('#9d86d6', 2.6);
+  const cIn = hdr('#5fb3a1', 2.4), cOut = hdr('#e0663b', 2.4), cAme = hdr('#9d86d6', 2.6), cLan = hdr('#5aa6d8', 2.6);
 
   // ---------- the far planet (Plex over Tailscale)
   const plexG = new THREE.Group(); plexG.position.copy(PLEX_POS); scene.add(plexG);
@@ -344,6 +345,8 @@ export async function start(host, status = () => {}) {
   // ---------- planetary characteristics (Pi-hole, NetViz, Audiobookshelf, RomM, PBS)
   const hotId = () => (hover && hover.userData.gid) || (S.selected && S.selected.id) || null;
   const traits = makeTraits({ scene, entries: () => E, glowTex, label, hdr, tl, T, camera, pick, hotId });
+  // ---------- other servers on the network: planets beyond the orrery, services as moons
+  const worlds3 = makeWorlds({ scene, label, hdr, T, glowTex, pick, sunR: SUN_R, mediaPos: PLEX_POS });
 
   // ---------- acquisitions (qBittorrent): downloads = accretion vortex + spiralling comets, uploads = polar jets
   const diskTex = (() => {
@@ -419,6 +422,12 @@ export async function start(host, status = () => {}) {
       return h;
     } catch (e) { console.warn('plex tip', e); return '' }
   }
+  // Plex running on a Proxmox guest: its streams show on that guest's own card
+  function plexGuestRows() {
+    const P = S.plex || {}, ss = plexSessions();
+    return `<div class="row"><span style="color:var(--brass)"><i>plex</i></span><b>${ss.length} stream${ss.length === 1 ? '' : 's'}</b></div>`
+      + ss.slice(0, 4).map(s => `<div class="row"><span style="color:${s.dec === 'tx' ? C.ember : C.verd}">▶ ${esc(s.user)}</span><b>${esc(s.title).slice(0, 26)}</b></div>`).join('') + plexExtra(P);
+  }
   function tipFor(obj, ev) {
     if (!obj) { tip.style.display = 'none'; renderer.domElement.style.cursor = 'grab'; return }
     renderer.domElement.style.cursor = 'pointer';
@@ -428,6 +437,8 @@ export async function start(host, status = () => {}) {
         <div class="row"><span>viewer</span><b>${esc(x.user)}</b></div><div class="row"><span>device</span><b>${esc(x.device)} · ${x.local ? 'LAN' : 'WAN'}</b></div>
         <div class="row"><span>mode</span><b style="color:${x.dec === 'tx' ? C.ember : x.dec === 'ds' ? C.brass : C.verd}">${x.dec === 'tx' ? 'transcode' : x.dec === 'ds' ? 'direct stream' : 'direct play'}</b></div>
         <div class="row"><span>progress</span><b>${fmtMs(x.off)} / ${fmtMs(x.dur)}</b></div><div class="row"><span>measured</span><b>${fmtBps(x.act)}</b></div>`;
+    } else if (obj.userData.world !== undefined || obj.userData.wsvc) {
+      const h = worlds3.tip(obj); if (!h) return; tip.innerHTML = h;
     } else if (obj.userData.plex) {
       const P = S.plex || {}, ss = plexSessions(), ok = P.enabled && !(P.identity || {}).__error;
       tip.innerHTML = `<h4>${esc(P.host || 'plex')}</h4><div class="row"><span>${esc(P.addr || '')}</span><b class="${ok ? 'ok' : 'bad'}">${ok ? 'reachable' : 'unreachable'}</b></div>
@@ -452,7 +463,7 @@ export async function start(host, status = () => {}) {
         <div class="row"><span>memory</span><b>${fmtB(g.mem)} / ${fmtB(g.maxmem)}</b></div>
         <div class="row"><span>net ↓ ↑</span><b>${fmtR(rt.netin)} · ${fmtR(rt.netout)}</b></div>
         <div class="row"><span>disk r w</span><b>${fmtR(rt.diskread)} · ${fmtR(rt.diskwrite)}</b></div>
-        <div class="row"><span>uptime</span><b>${fmtUp(g.uptime)}</b></div>` + traits.tipRows(g);
+        <div class="row"><span>uptime</span><b>${fmtUp(g.uptime)}</b></div>` + traits.tipRows(g) + (S.plex && S.plex.guest === g.name ? plexGuestRows() : '');
     }
     tip.style.display = 'block';
     tip.style.left = Math.min(innerWidth - 260, ev.clientX + 18) + 'px';
@@ -469,6 +480,7 @@ export async function start(host, status = () => {}) {
   el.addEventListener('pointerup', ev => {
     if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6 || !hover) return;
     tip.style.display = 'none';
+    if (hover.userData.world !== undefined || hover.userData.wsvc) { go('setup'); return }
     if (hover.userData.plex || hover.userData.stream !== undefined) go('cast'); else openDrawer(hover.userData.gid);
   });
 
@@ -551,7 +563,8 @@ export async function start(host, status = () => {}) {
       const mfr = g.maxmem ? Math.min(1, g.mem / g.maxmem) : 0;
       if (Math.abs(mfr - e.mf) > 0.01) { e.mf = mfr; e.mem.geometry.dispose(); e.mem.geometry = new THREE.TorusGeometry(e.size * 1.45, 0.03, 6, 64, Math.max(0.01, mfr * Math.PI * 2)); e.mem.material.color.copy(hdr(mfr > 0.9 ? '#d14d5a' : '#c9a45c', 1.5)) }
       e.sel.visible = hotId() === g.id;
-      const lt = al ? `<b>${esc(g.name)}</b><span>${esc(al)}</span>` : `<b>${esc(g.name)}</b><span>${g.vmid} · ${run ? fmtP(gc * 100) : 'stopped'}</span>`;
+      const pg = S.plex && S.plex.guest === g.name ? plexSessions().length : 0;
+      const lt = (al ? `<b>${esc(g.name)}</b><span>${esc(al)}</span>` : `<b>${esc(g.name)}</b><span>${g.vmid} · ${run ? fmtP(gc * 100) : 'stopped'}</span>`) + (pg ? `<span class="o3-q">▶ ${pg} stream${pg > 1 ? 's' : ''}</span>` : '');
       e.lab.element.classList.toggle('alarm', !!al); e.lab.element.classList.toggle('quiet', k < 1);
       if (e.lab.element.innerHTML !== lt) e.lab.element.innerHTML = lt;
       e.lab.element.classList.toggle('hot', hotId() === g.id);
@@ -566,9 +579,12 @@ export async function start(host, status = () => {}) {
     });
     // plex
     const P = S.plex, ss = (P && P.enabled) ? plexSessions() : [];
-    plexG.visible = !!(P && P.enabled);
-    const viaTs = !!(P && P.enabled && P.tailnet); tetherMesh.visible = viaTs; tLab.visible = viaTs;
-    if (P && P.enabled) {
+    // the big media planet: Plex off this host and switched on under Setup → Other servers (Plex on a guest is drawn as that guest)
+    const MW = (S.worlds || []).find(w => w.media);
+    const showGiant = !!(P && P.enabled && !P.guest && (!S.worlds || (MW && MW.enabled)));
+    plexG.visible = showGiant;
+    const viaTs = showGiant && !!P.tailnet; tetherMesh.visible = showGiant; tLab.visible = showGiant;
+    if (showGiant) {
       const ok = !(P.identity || {}).__error;
       giant.rotation.y += dt * 0.12;
       giantMat.color.copy(giantBase).multiplyScalar(ok ? 1 : 0.22);
@@ -587,9 +603,9 @@ export async function start(host, status = () => {}) {
       WU.uColonized.value += (colTarget - WU.uColonized.value) * Math.min(1, dt * 0.6);   // sweeps in on load, creeps as D: fills
       WU.uBuild.value = buildS; WU.uAlarm.value = alarmS; WU.uTime.value = t;
       WU.uSunDir.value.copy(key.position).normalize().transformDirection(camera.matrixWorldInverse);
-      plexHalo.material.color.copy(hdr(ok ? '#9d86d6' : '#d14d5a', ok ? 0.35 + ss.length * 0.15 : 0.25));
-      tetherMat.color.copy(hdr(ok ? '#9d86d6' : '#d14d5a', 1.3));
-      const tl = ok ? `TAILSCALE · ${(P.identity.__ms || 0).toFixed(0)} ms` : 'TAILNET · NO SIGNAL';
+      plexHalo.material.color.copy(hdr(ok ? (viaTs ? LINK_COL.tailnet : LINK_COL.lan) : '#d14d5a', ok ? 0.35 + ss.length * 0.15 : 0.25));
+      tetherMat.color.copy(hdr(ok ? (viaTs ? LINK_COL.tailnet : LINK_COL.lan) : '#d14d5a', 1.3));
+      const tl = ok ? `${viaTs ? 'TAILSCALE' : 'LAN'} · ${(P.identity.__ms || 0).toFixed(0)} ms` : `${viaTs ? 'TAILNET' : 'LAN'} · NO SIGNAL`;
       if (tLab.element.textContent !== tl) tLab.element.textContent = tl;
       tLab.element.classList.toggle('bad', !ok);
       const Qb = P.qbit && P.qbit.enabled && !P.qbit.__error ? P.qbit : null;
@@ -623,7 +639,7 @@ export async function start(host, status = () => {}) {
           parts.push({ kind: 's', from: tmp.clone(), dir: tmp.clone().sub(PLEX_POS).normalize().add(new THREE.Vector3((Math.random() - .5) * .6, (Math.random() - .5) * .6, (Math.random() - .5) * .6)).normalize(), k: 0, s: 0.012 + Math.random() * 0.01, c: hdr(DEC[x.dec], 2.2) });
         }
       });
-      if (ok && viaTs && Math.random() < (ss.length ? Math.min(1, 0.08 + ss.length * 0.15) : 0.02)) parts.push({ kind: 't', k: 0, s: 0.004 + Math.random() * 0.004 });
+      if (ok && Math.random() < (ss.length ? Math.min(1, 0.08 + ss.length * 0.15) : 0.02)) parts.push({ kind: 't', k: 0, s: 0.004 + Math.random() * 0.004 });
 
       // acquisitions
       const Q = P.qbit && P.qbit.enabled && !P.qbit.__error ? P.qbit : null;
@@ -669,6 +685,7 @@ export async function start(host, status = () => {}) {
       plexHalo.scale.setScalar(7 + dIn * 3 + Math.max(0, flash) * 8);
     }
     traits.update(dt, t);
+    worlds3.update(dt, t, { mediaGroup: plexG, mediaWorld: showGiant ? MW : null, hover });
     // particles → buffer
     let n2 = 0;
     for (let i = parts.length - 1; i >= 0; i--) {
@@ -682,7 +699,7 @@ export async function start(host, status = () => {}) {
         const bend = Math.sin(k * Math.PI);
         tmp.set(sx + (ex - sx) * k - tmp2.z * bend * p.o, bend * p.h, sz + (ez - sz) * k + tmp2.x * bend * p.o);
         c = p.dir === 1 ? cIn : cOut;
-      } else if (p.kind === 't') { tether.getPoint(1 - p.k, tmp); c = cAme }
+      } else if (p.kind === 't') { tether.getPoint(1 - p.k, tmp); c = viaTs ? cAme : cLan }
       else if (p.kind === 'v') {            // accretion: log-spiral inflow in the ring plane
         const k = p.k, r = p.r0 + (1.45 - p.r0) * Math.pow(k, 1.5), a = p.a + k * 5.2;
         tmp.set(Math.cos(a) * r, p.y * (1 - k), Math.sin(a) * r); tilt.localToWorld(tmp);

@@ -139,6 +139,7 @@ tr.click{cursor:pointer}tr.click:hover td{background:rgba(201,164,92,.06)}
 .o3-lab{font:10px var(--mono);color:var(--text);text-align:center;white-space:nowrap;text-shadow:0 0 6px #000,0 0 2px #000;line-height:1.35}
 .o3-lab b{font-weight:400}.o3-lab span{display:block;color:var(--muted);font-size:9px}
 .o3-lab.dim{opacity:.45}
+.o3-lab.o3-wmoon{font-size:8px;opacity:.75}.o3-lab.o3-wmoon b{color:var(--brass)}
 .o3-lab.g.big b{font-size:12px;letter-spacing:.04em}.o3-lab.g.quiet{opacity:.3}.o3-lab.g.quiet b{font-size:9px}.o3-lab.g.quiet.hot{opacity:1}
 .o3-lab.g.alarm{opacity:1}.o3-lab.g.alarm b{color:#ff9a8a;font-size:11px}.o3-lab.g.alarm span{display:block;color:#ff9a8a}
 .o3-sun.hot span{color:var(--rose)!important}.o3-sun .o3-big{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--brass-hi)}
@@ -1162,6 +1163,7 @@ setInterval(()=>{if(S.view==='net')pollNet()},5000);
 setInterval(()=>{if(S.view==='cast'&&plexSessions().length)renderCast()},1000);
 </script>
 <script src="/setup.js"></script>
+<script src="/worlds.js"></script>
 <script src="/wizard.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ Writes need the admin key (data/admin.key, created on first start and printed to
 """
 import json, os, re, threading, time, urllib.parse
 
-import discover, wizard
+import discover, wizard, worlds
 
 
 def _version():
@@ -109,6 +109,13 @@ def save(patch):
         s["manifest"]["columns"] = [c for c in m["columns"] if isinstance(c, str)][:20]
     if isinstance((patch.get("media") or {}).get("enabled"), bool):
         s["media"]["enabled"] = patch["media"]["enabled"]
+        for w in (s.get("worlds") or {}).values():            # the old switch drives the media-server planet
+            if w.get("type") == "media": w["enabled"] = patch["media"]["enabled"]
+    if isinstance(patch.get("worlds"), dict):
+        s["worlds"] = worlds.clean(s.get("worlds"), patch["worlds"])
+        ph = worlds._plex_host()
+        for w in s["worlds"].values():                        # ...and the planet drives the old switch
+            if w.get("type") == "media" and w.get("addr") == ph: s["media"]["enabled"] = w.get("enabled", True)
     if isinstance((patch.get("wizard") or {}).get("done"), bool):
         s["wizard"]["done"] = patch["wizard"]["done"]
     src = (patch.get("network") or {}).get("source")
@@ -287,6 +294,8 @@ def get(path, query):
         return 200, templates_public()
     if path == "/api/next/setup/state":
         return 200, setup_state()
+    if path == "/api/next/worlds":
+        return 200, worlds.api()
     if path == "/api/next/discovery":
         return 200, {"running": _disc["running"], "last": _disc["last"], "error": _disc["error"], "result": _disc["result"]}
     return None
@@ -341,4 +350,10 @@ def post(path, headers, body):
         return 200, {"ok": True, "restarting": go, "pendingRestart": _pending["restart"] and not go}
     if path == "/api/next/rescan":
         return 200, {"started": rescan(force=True)}
+    if path == "/api/next/worlds/scan":
+        try: addr = (json.loads(body or b"{}").get("addr") or "").strip()
+        except (ValueError, AttributeError): return 400, {"error": "bad json"}
+        if not addr: return 400, {"error": "addr required"}
+        worlds.request_scan(addr)
+        return 200, {"queued": addr}
     return 404, {"error": "not found"}

@@ -203,6 +203,7 @@ async function renderSetup() {
 async function save(patch, note) {
   try { applyBind(await post('/api/next/settings', patch)); msg(note || 'Saved.') } catch (e) { msg(e.message); renderSetup() }
 }
+globalThis.orrerySave = save; globalThis.orreryPost = post;   // used by worlds.js
 $('#setup-tbl').addEventListener('change', e => {
   const s = e.target.closest('select'), tr = e.target.closest('tr[data-id]'); if (!s || !tr) return;
   const g = S.bind.guests[tr.dataset.id], f = s.dataset.f, v = s.value, p = { [f]: v };

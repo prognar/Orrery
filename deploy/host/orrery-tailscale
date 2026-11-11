@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Writes this host's Tailscale peers to /run/orrery-temps/tailscale.json every 60 s.
+Optional host agent: run it on the Proxmox host (which is on your tailnet) and bind-mount /run/orrery-temps into
+Orrery's container at /mnt/host-temps (read-only). Orrery then suggests tailnet machines under Setup -> Other servers."""
+import json, os, subprocess, time
+
+OUT = "/run/orrery-temps/tailscale.json"
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+
+while True:
+    try:
+        st = json.loads(subprocess.run(["tailscale", "status", "--json"], capture_output=True, text=True, timeout=20).stdout)
+        peers = []
+        for p in (st.get("Peer") or {}).values():
+            ips = [i for i in p.get("TailscaleIPs") or [] if ":" not in i]
+            if not ips:
+                continue
+            peers.append({"name": p.get("HostName") or "", "ip": ips[0], "os": p.get("OS") or "", "online": bool(p.get("Online")),
+                          "dns": (p.get("DNSName") or "").rstrip("."), "direct": bool(p.get("CurAddr")), "relay": p.get("Relay") or ""})
+        out = {"ts": time.time(), "self": (st.get("Self") or {}).get("HostName"), "peers": sorted(peers, key=lambda x: x["name"].lower())}
+        tmp = OUT + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(out, f)
+        os.replace(tmp, OUT)
+    except Exception as e:
+        print("tailscale feed:", e, flush=True)
+    time.sleep(60)
