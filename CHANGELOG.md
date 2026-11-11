@@ -7,6 +7,7 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 ### Added
 - Version number shown on the Setup screen and in the service log; `VERSION` file and this changelog.
 - Optional settings in `data/config.json`: `media.ip` (the media-server PC, so remote-desktop sessions point at the giant) and `links.wiki` (makes recent wiki edits clickable).
+- GitHub Releases are published automatically from this changelog when a version tag is pushed.
 - `tools/leakcheck.py` and a pre-push hook (`tools/install-hooks.sh`) that stop private names, addresses and keys from being pushed. Changed screenshots are OCR'd when tesseract is installed.
 
 ### Fixed

@@ -1,0 +1,26 @@
+# Publish a GitHub Release whenever a version tag (v1.2.3) is pushed,
+# using that version's section of CHANGELOG.md as the release notes.
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            /^## \[/ || /^\[[0-9]+\.[0-9]+\.[0-9]+\]: / { on = 0 }
+            on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See [CHANGELOG.md](CHANGELOG.md)." > notes.md
+          cat notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Orrery $GITHUB_REF_NAME" --notes-file notes.md --verify-tag --latest
