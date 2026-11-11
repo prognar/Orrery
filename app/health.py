@@ -61,67 +61,119 @@ def detect(addr, name, nd_parent=None):
 
 
 # ---------------------------------------------------------------- readers
+def _val(s, kind=None):
+    """LHM value with its unit -> number in Orrery's units: °C, B/s, MiB, %, RPM, W."""
+    s = str(s or "")
+    v = _num(s)
+    if v is None:
+        return None
+    u = s.strip().split()[-1] if " " in s.strip() else ""
+    if u in ("°F", "F"):                     # LHM can be set to Fahrenheit
+        return (v - 32) * 5 / 9
+    mult = {"B/s": 1, "KB/s": 1024, "MB/s": 1048576, "GB/s": 1073741824, "MB": 1, "GB": 1024, "TB": 1048576, "KB": 1 / 1024}
+    return v * mult[u] if u in mult else v
+
+
 def _lhm(addr, h):
     root = _get(f"http://{addr}:{h.get('port', LHM_PORT)}/data.json", 4)
-    out = {"src": "LibreHardwareMonitor", "disks": []}
-    def kids(n): return n.get("Children") or []
-    def groups(hw): return {g.get("Text", ""): kids(g) for g in kids(hw)}
-    def pick(sensors, prefer):
+    out = {"src": "LibreHardwareMonitor", "disks": [], "fans": [], "cores": []}
+    kids = lambda n: n.get("Children") or []
+    def groups(hw):
+        g = {}
+        for x in kids(hw):
+            if kids(x) and not kids(kids(x)[0]):
+                g.setdefault(x.get("Text", ""), []).extend(kids(x))
+        return g
+    def find(sensors, prefer, fallback_max=True):
         for rx in prefer:
             for s in sensors:
-                if re.search(rx, s.get("Text", ""), re.I) and _num(s.get("Value")) is not None:
-                    return _num(s.get("Value"))
-        vals = [_num(s.get("Value")) for s in sensors if _num(s.get("Value")) is not None]
-        return max(vals) if vals else None
-    hws = [hw for m in kids(root) for hw in kids(m)]
+                if re.search(rx, s.get("Text", ""), re.I) and _val(s.get("Value")) is not None:
+                    return _val(s.get("Value"))
+        vals = [_val(s.get("Value")) for s in sensors if _val(s.get("Value")) is not None]
+        return max(vals) if vals and fallback_max else None
+    hws = []
+    def collect(n):                           # hardware can nest (mainboard -> super I/O chip)
+        for c in kids(n):
+            if c.get("ImageURL") and any(kids(k) for k in kids(c)):
+                hws.append(c); collect(c)
+    for m in kids(root):
+        collect(m)
+    gpus, net = [], {"down": 0.0, "up": 0.0}
     for hw in hws:
-        img, txt = (hw.get("ImageURL") or "").lower(), hw.get("Text", "")
-        G = groups(hw)
+        img, txt, G = (hw.get("ImageURL") or "").lower(), hw.get("Text", ""), groups(hw)
         temps, load, data = G.get("Temperatures", []), G.get("Load", []), G.get("Data", []) + G.get("SmallData", [])
-        if "cpu" in img and "cpu" not in out:
-            out["cpu"] = pick(load, [r"^CPU Total$"])
-            out["cpuT"] = pick(temps, [r"package", r"tctl|tdie", r"^CPU$", r"core.*max", r"average"])
-            out["cpuName"] = txt
-        elif re.search(r"nvidia|ati|amd|radeon|gpu", img) or re.search(r"geforce|radeon|rtx|gtx|\barc\b", txt, re.I):
-            if "gpu" in out:
-                continue
-            out["gpu"] = pick(load, [r"^GPU Core$", r"^D3D 3D$"])
-            out["gpuT"] = pick(temps, [r"^GPU Core$", r"^GPU$", r"hot ?spot"])
-            used, tot = pick(data, [r"GPU Memory Used", r"D3D Dedicated Memory Used"]), pick(data, [r"GPU Memory Total"])
-            if used is not None and tot: out["vram"] = [used, tot]          # MB
-            out["gpuName"] = txt
-        elif "ram" in img and "ram" not in out:
-            used, avail = pick(data, [r"^Memory Used$", r"^Used Memory$"]), pick(data, [r"^Memory Available$", r"^Available Memory$"])
+        if "cpu" in img and "cpuName" not in out:
+            out["cpuName"], out["cpu"] = txt, find(load, [r"^CPU Total$"])
+            out["cpuT"] = find(temps, [r"package", r"tctl|tdie", r"^CPU$", r"core.*max", r"average"])
+            out["cpuW"] = find(G.get("Powers", []), [r"^Package$", r"^CPU Package$"], False)
+            out["cores"] = [round(_val(s["Value"]), 1) for s in load if re.match(r"^CPU Core #\d+$", s.get("Text", "")) and _val(s.get("Value")) is not None]
+        elif re.search(r"nvidia|ati|amd|radeon|gpu|intel", img) and img.split("/")[-1] != "cpu.png":
+            vt = find(data, [r"^GPU Memory Total$"], False) or 0
+            gpus.append({"gpuName": txt, "gpu": find(load, [r"^GPU Core$", r"^D3D 3D$"]),
+                         "gpuT": find(temps, [r"^GPU Core$", r"^GPU$"]), "gpuHot": find(temps, [r"hot ?spot"], False),
+                         "gpuMemT": find(temps, [r"memory junction"], False), "gpuW": find(G.get("Powers", []), [r"package", r"board"]),
+                         "vram": [find(data, [r"^GPU Memory Used$"], False) or 0, vt],
+                         "gpuFans": [_val(s["Value"]) for s in G.get("Fans", []) if _val(s.get("Value"))], "_rank": vt + (20000 if "nvidia" in img else 0)})
+        elif "ram" in img and re.search(r"^total memory$|^generic memory$|^memory$", txt, re.I):
+            used, avail = find(data, [r"^Memory Used$"], False), find(data, [r"^Memory Available$"], False)
             if used is not None and avail is not None:
-                out["ram"] = [used * 1024, (used + avail) * 1024]                # MiB
-            out["ramPct"] = pick(load, [r"^Memory$"])
+                out["ram"] = [used, used + avail]                                    # MiB
+            out["ramPct"] = find(load, [r"^Memory$"], False)
+        elif "ram" in img and temps:
+            t = find(temps, [r"^DIMM"], False)
+            if t is not None: out["dimmT"] = max(out.get("dimmT") or 0, t)
         elif "hdd" in img or "nvme" in img or "ssd" in img:
-            t = pick(temps, [r"temperature", r"composite"])
-            u = pick(load, [r"used space"])
-            out["disks"].append({"name": txt[:28], "t": t, "used": u})
+            out["disks"].append({"name": txt[:30], "t": find(temps, [r"composite", r"^Temperature$"]),
+                                 "tWarn": find(temps, [r"warning"], False), "used": find(load, [r"used space"], False),
+                                 "act": find(load, [r"total activity"], False), "life": find(G.get("Levels", []), [r"^Life$"], False),
+                                 "size": find(data, [r"total space"], False),                  # MiB
+                                 "read": find(G.get("Throughput", []), [r"read rate"], False) or 0,
+                                 "write": find(G.get("Throughput", []), [r"write rate"], False) or 0})
+        elif "nic" in img:
+            th = G.get("Throughput", [])
+            net["down"] += find(th, [r"download"], False) or 0; net["up"] += find(th, [r"upload"], False) or 0
+        if "chip" in img or "mainboard" in img:
+            for s in G.get("Fans", []):
+                r = _val(s.get("Value"))
+                if r: out["fans"].append({"name": s.get("Text", ""), "rpm": r})
+    if gpus:                                            # the discrete card, not the iGPU
+        g = max(gpus, key=lambda x: x["_rank"]); g.pop("_rank")
+        if not g["vram"][1]: g.pop("vram")
+        for f in g.pop("gpuFans"): out["fans"].append({"name": "GPU", "rpm": f, "gpu": True})
+        out.update(g)
+    out["net"] = net
     return out
 
 
 def _glances(addr, h):
     b = f"http://{addr}:{h.get('port', GLANCES_PORT)}/api/{h.get('api', '4')}"
     q = _get(b + "/quicklook")
-    out = {"src": "Glances", "cpu": q.get("cpu"), "ramPct": q.get("mem"), "cpuName": q.get("cpu_name"), "disks": []}
-    try:
-        m = _get(b + "/mem"); out["ram"] = [(m.get("used") or 0) / 1048576, (m.get("total") or 0) / 1048576]
-    except Exception:
-        pass
-    try:
-        S = _get(b + "/sensors")
-        core = [s.get("value") for s in S if str(s.get("type", "")).startswith("temperature") and isinstance(s.get("value"), (int, float))]
-        gpu = [s.get("value") for s in S if re.search(r"gpu|amdgpu|nvidia|edge", str(s.get("label", "")), re.I) and isinstance(s.get("value"), (int, float))]
-        if core: out["cpuT"] = max(core)
-        if gpu: out["gpuT"] = max(gpu)
-    except Exception:
-        pass
-    try:
-        out["up"] = _get(b + "/uptime")
-    except Exception:
-        pass
+    out = {"src": "Glances", "cpu": q.get("cpu"), "ramPct": q.get("mem"), "cpuName": q.get("cpu_name"), "disks": [], "fans": [], "cores": []}
+    def opt(path):
+        try: return _get(b + path)
+        except Exception: return None
+    m = opt("/mem")
+    if m: out["ram"] = [(m.get("used") or 0) / 1048576, (m.get("total") or 0) / 1048576]
+    pc = opt("/percpu")
+    if isinstance(pc, list): out["cores"] = [round(100 - (c.get("idle") or 0), 1) for c in pc]
+    S = opt("/sensors") or []
+    core = [s.get("value") for s in S if str(s.get("type", "")).startswith("temperature") and isinstance(s.get("value"), (int, float))]
+    gpu = [s.get("value") for s in S if re.search(r"gpu|amdgpu|nvidia|edge", str(s.get("label", "")), re.I) and isinstance(s.get("value"), (int, float))]
+    if core: out["cpuT"] = max(core)
+    if gpu: out["gpuT"] = max(gpu)
+    out["fans"] = [{"name": s.get("label", ""), "rpm": s["value"]} for s in S if s.get("type") == "fan_speed" and s.get("value")]
+    for f in opt("/fs") or []:
+        if (f.get("size") or 0) > 2 ** 30:
+            out["disks"].append({"name": f.get("mnt_point") or f.get("device_name"), "used": f.get("percent"), "size": f["size"] / 1048576, "read": 0, "write": 0})
+    io = opt("/diskio") or []
+    if io and out["disks"]:
+        out["disks"][0]["read"] = sum(d.get("read_bytes_rate_per_sec") or d.get("read_bytes", 0) for d in io)
+        out["disks"][0]["write"] = sum(d.get("write_bytes_rate_per_sec") or d.get("write_bytes", 0) for d in io)
+    nets = opt("/network") or []
+    out["net"] = {"down": sum(n.get("bytes_recv_rate_per_sec") or n.get("rx", 0) for n in nets if not str(n.get("interface_name", "")).startswith("lo")),
+                  "up": sum(n.get("bytes_sent_rate_per_sec") or n.get("tx", 0) for n in nets if not str(n.get("interface_name", "")).startswith("lo"))}
+    up = opt("/uptime")
+    if up: out["up"] = up
     return out
 
 

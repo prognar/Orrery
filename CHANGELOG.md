@@ -11,7 +11,8 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 - Plex running in a Proxmox guest is drawn as that guest instead of a separate planet; its streams show on the guest's card.
 - Optional host agent `deploy/host/orrery-tailscale` that writes Tailscale peers for suggestions.
 - Each server's services can be switched on or off as moons (click the chips in Setup → Other servers).
-- **Health on every planet** from whichever agent the machine runs: LibreHardwareMonitor (Windows: CPU/GPU temperature and load, RAM, VRAM, drive temperatures), Glances (Linux/macOS/Pi) or Netdata (directly or through a Netdata parent). Detected when a server is added, rescanned or on the 6-hourly scan, or connected on purpose with **Connect health** (pick the agent and port; Orrery tests it on the spot and says why if it can't, e.g. a firewall). The planet warms and spins faster with CPU load, carries a brass RAM arc and a teal GPU arc, and pulses red at 85 °C or more; the label and hover card show the numbers.
+- **Living planets.** Every other server is a world whose surface is its health: continents are drives (cities spread as they fill, coasts glow red at 90%+, reads and writes flicker the lights), sea level is RAM, wildfires are CPU cores (one per thread), the sky colour is CPU temperature, each spinning fan is a cyclone, the GPU is a volcanic forge moon (load, heat, VRAM), aurorae are network traffic and night-side city lights are power draw. Lit from the orrery's sun. Hover for a legend with the numbers behind each effect.
+- Health from whichever agent the machine runs: LibreHardwareMonitor (Windows), Glances (Linux/macOS/Pi) or Netdata (directly or via a parent). LibreHardwareMonitor in Fahrenheit is converted; the discrete GPU is preferred over an iGPU.
 
 ### Changed
 - Setup's "Media world" switch is now the Other servers card. An existing off-host Plex is carried over as a Media server planet automatically.
