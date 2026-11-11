@@ -329,6 +329,14 @@ def world_bundle():
             "ram_used": ram.get("used"), "ram_free": ram.get("free"),                                                # MiB
             "io_read": io.get("reads", io.get("in")), "io_write": io.get("writes", io.get("out"))}                    # KiB/s
 
+def _tailnet(host):
+    """True when Plex is reached over Tailscale (CGNAT 100.64/10 address or a MagicDNS *.ts.net name)."""
+    host = host or ""
+    try:
+        return ipaddress.ip_address(host) in ipaddress.ip_network("100.64.0.0/10")
+    except ValueError:
+        return host.endswith(".ts.net")
+
 def plex_bundle():
     if not PLEX_URL:
         return {"enabled": False}
@@ -337,7 +345,8 @@ def plex_bundle():
         return {**{k: err for k in ("identity", "sessions", "transcodes", "activities", "resources", "recent", "history", "accounts", "devices",
                                     "libraries", "bw")},
                 "qbit": qbit_bundle(), "world": world_bundle(), "enabled": True, "unreachable": True,
-                "host": PLEX.get("name", "plex"), "addr": urllib.parse.urlsplit(PLEX_URL).hostname, "ts": time.time()}
+                "host": PLEX.get("name", "plex"), "addr": urllib.parse.urlsplit(PLEX_URL).hostname,
+                "tailnet": _tailnet(urllib.parse.urlsplit(PLEX_URL).hostname), "ts": time.time()}
     jobs = {
         "identity": ("/identity", 60),
         "sessions": ("/status/sessions", 2),
@@ -362,6 +371,7 @@ def plex_bundle():
     out["enabled"] = True
     out["host"] = PLEX.get("name", "plex")
     out["addr"] = urllib.parse.urlsplit(PLEX_URL).hostname
+    out["tailnet"] = _tailnet(out["addr"])
     out["ts"] = time.time()
     return out
 
@@ -1084,6 +1094,6 @@ class H(BaseHTTPRequestHandler):
     do_DELETE = do_PUT
 
 if __name__ == "__main__":
-    print(f"Orrery listening on :{PORT} → {PVE} ({NODE})", flush=True)
+    print(f"Orrery {nextapi.VERSION} listening on :{PORT} → {PVE} ({NODE})", flush=True)
     _nv_start()   # keep per-device flow accounting running even with no page open
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

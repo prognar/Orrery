@@ -263,7 +263,7 @@ footer .lab{padding:0 14px;font-size:9px;letter-spacing:.28em;color:#000;backgro
   <button data-v="vaults"><span class="num">III</span><span class="lbl">VAULTS</span><small>storage &amp; disks</small></button>
   <button data-v="chron"><span class="num">IV</span><span class="lbl">CHRONICLE</span><small>tasks &amp; backups</small></button>
   <button data-v="manifest"><span class="num">V</span><span class="lbl">MANIFEST</span><small>every guest, sortable</small></button>
-  <button data-v="cast"><span class="num">VI</span><span class="lbl">BROADCAST</span><small>plex, across the tailnet</small></button>
+  <button data-v="cast"><span class="num">VI</span><span class="lbl">BROADCAST</span><small>your media server</small></button>
   <button data-v="net"><span class="num">VII</span><span class="lbl">NETWORK</span><small>every device, router's eye</small></button>
   <div class="navfoot">keys 1–7 · esc closes<br>read-only · PVEAuditor<br><span id="cpu-model"></span></div>
 </nav>
@@ -310,7 +310,7 @@ footer .lab{padding:0 14px;font-size:9px;letter-spacing:.28em;color:#000;backgro
     <div class="card"><table id="man-tbl"></table></div>
   </section>
   <section class="view" id="v-cast">
-    <h2>Broadcast <em>signals leaving the far planet</em></h2><div class="sub" id="cast-sub">reaching across the tailnet…</div>
+    <h2>Broadcast <em>signals leaving the far planet</em></h2><div class="sub" id="cast-sub">reaching the media server…</div>
     <div class="tiles" id="cast-tiles"></div>
     <h3 class="sec">Now showing</h3>
     <div id="np"></div>
@@ -657,7 +657,7 @@ function renderCast(){
   const P=S.plex;if(!P)return;
   if(!P.enabled){$('#cast-sub').textContent='plex not configured';return}
   const id=P.identity||{},ok=!id.__error,ss=plexSessions();
-  $('#cast-sub').innerHTML=ok?`Plex ${esc((id.version||'').split('-')[0])} · ${esc(P.host)} · via Tailscale ${esc(P.addr)} · <span style="color:var(--ame,${C.ame})">${(id.__ms||0).toFixed(0)} ms</span>`:`<span class="bad">no signal from ${esc(P.addr)} — ${esc(id.__error)}</span>`;
+  $('#cast-sub').innerHTML=ok?`Plex ${esc((id.version||'').split('-')[0])} · ${esc(P.host)} · ${P.tailnet?'via Tailscale':'at'} ${esc(P.addr)} · <span style="color:var(--ame,${C.ame})">${(id.__ms||0).toFixed(0)} ms</span>`:`<span class="bad">no signal from ${esc(P.addr)} — ${esc(id.__error)}</span>`;
   const res=((P.resources||{}).StatisticsResources||[]).slice().sort((a,b)=>a.at-b.at),last=res[res.length-1]||{};
   const B=P.bw&&!P.bw.__error?P.bw:null,tx=ss.filter(s=>s.dec==='tx').length,resv=ss.reduce((a,s)=>a+s.resv,0);
   $('#cast-tiles').innerHTML=`

@@ -233,7 +233,7 @@ systemctl enable --now orrery
 | `links.wiki` | `"http://192.168.1.20:3000"` | Makes recent wiki edits clickable |
 | `traits.netviz.home` | `[51.5, -0.12]` | Where NetViz arcs land on the globe (your rough location); defaults to the middle of the US |
 
-To update: `cd /opt/orrery && git pull && systemctl restart orrery`. Your settings and keys live in `data/`, which updates never touch.
+To update: `cd /opt/orrery && git pull && systemctl restart orrery`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md). Your settings and keys live in `data/`, which updates never touch.
 
 ## Security and privacy
 

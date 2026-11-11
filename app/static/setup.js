@@ -35,7 +35,8 @@ css.textContent = `
 #v-setup .conn .what{font-size:10px;color:var(--faint)}
 #v-setup .conn button,#v-setup .srv button{background:none;border:1px solid var(--line);color:var(--brass);font:inherit;font-size:10px;letter-spacing:.1em;padding:3px 9px;cursor:pointer}
 #v-setup .conn button:hover{border-color:var(--brass)}
-#v-setup .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin:2px 0 8px}
+#v-setup .ver{font-size:10px;letter-spacing:.14em;color:var(--faint);margin:-4px 0 6px}#v-setup .ver a{color:var(--brass)}
+#v-setup .conn-legend{position:static;display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin:2px 0 8px}
 `;
 document.head.appendChild(css);
 
@@ -48,6 +49,7 @@ btn.addEventListener('click', () => go('setup'));
 if (foot) foot.innerHTML = foot.innerHTML.replace('keys 1–7', 'keys 1–8');
 const sec = document.createElement('section'); sec.className = 'view'; sec.id = 'v-setup';
 sec.innerHTML = `<h2>Setup <em>what every body is</em></h2>
+  <div class="ver" id="setup-ver"></div>
   <div class="sub">Orrery scanned each guest and guessed what it runs. Correct anything it got wrong, choose how prominent each one is, and what the Manifest shows.</div>
   <div class="row2">
     <div class="card"><h3>DISCOVERY</h3><div id="setup-disc" class="muted"></div><div style="margin-top:10px"><button class="act" id="setup-rescan">RESCAN NOW</button></div></div>
@@ -61,7 +63,7 @@ sec.innerHTML = `<h2>Setup <em>what every body is</em></h2>
   </div>
   <div class="row2">
     <div class="card" style="grid-column:1/-1"><h3>CONNECTIONS<b id="conn-count"></b></h3>
-      <div class="legend"><span><span class="lv on">CONNECTED</span> live detail on</span><span><span class="lv need">NEEDS API KEY</span> click to add one</span><span><span class="lv free">NO KEY NEEDED</span> just an address</span></div>
+      <div class="conn-legend"><span><span class="lv on">CONNECTED</span> live detail on</span><span><span class="lv need">NEEDS API KEY</span> click to add one</span><span><span class="lv free">NO KEY NEEDED</span> just an address</span></div>
       <div id="conn-list" class="muted">Loading…</div></div>
     <div class="card"><h3>REMOTE ACCESS</h3>
       <label class="chk"><input type="checkbox" id="ts-on"> some services are only reachable over Tailscale</label>
@@ -144,6 +146,7 @@ async function loadConn(force) {
   try {
     const st = await fetch('/api/next/setup/state').then(r => r.json()); connAt = Date.now();
     const all = [...st.services, ...st.media.filter(m => m.guest || m.configured), ...(st.qbit.configured ? [st.qbit] : [])];
+    const ve = $('#setup-ver'); if (ve && st.version) ve.innerHTML = `ORRERY v${esc(st.version)} · <a href="https://github.com/prognar/Orrery/releases" target="_blank" rel="noopener">what's new</a>`;
     CONN = { st, all, byGuest: Object.fromEntries(st.services.concat(st.media).filter(x => x.guest).map(x => [x.guest, x])) };
   } catch (e) {}
 }

@@ -10,6 +10,19 @@ import json, os, re, threading, time, urllib.parse
 
 import discover, wizard
 
+
+def _version():
+    """Release from the VERSION file; instances started with ORRERY_CHANNEL=dev say so."""
+    try:
+        v = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "VERSION")).read().strip()
+    except OSError:
+        v = "unknown"
+    ch = os.environ.get("ORRERY_CHANNEL", "").strip()
+    return f"{v}-{ch}" if ch else v
+
+
+VERSION = _version()
+
 TIERS = ("active", "watch", "quiet", "hidden")
 MANIFEST = ("show", "hide")
 GID = re.compile(r"^(lxc|qemu)/\d{1,9}$")
@@ -233,7 +246,7 @@ def setup_state():
     for sk in MEDIA_SPECS:                             # media servers usually live off-host: always offer them
         if sk not in seen: media.append({**wizard.public_spec(sk), "guest": None, "prefill": None})
     res = _pve_get(f"nodes/{_node}/version", ttl=60)
-    return {"needsPassword": not wizard.has_password(), "done": s["wizard"]["done"], "node": _node,
+    return {"version": VERSION, "needsPassword": not wizard.has_password(), "done": s["wizard"]["done"], "node": _node,
             "pveVersion": res.get("version") if isinstance(res, dict) else None,
             "guests": len(b.get("guests") or {}), "ready": b.get("ready"), "discovery": b["discovery"],
             "services": sorted(services, key=lambda x: x["vmid"]), "media": media, "qbit": wizard.public_spec("qbit"),

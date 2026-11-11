@@ -287,7 +287,7 @@ export async function start(host, status = () => {}) {
   const tCtrl = tStart.clone().add(tEnd).multiplyScalar(0.5).add(new THREE.Vector3(0, 6, 0));
   const tether = new THREE.QuadraticBezierCurve3(tStart, tCtrl, tEnd);
   const tetherMat = new THREE.MeshBasicMaterial({ color: hdr('#9d86d6', 1.3), transparent: true, opacity: 0.5, depthWrite: false });
-  scene.add(new THREE.Mesh(new THREE.TubeGeometry(tether, 96, 0.028, 6), tetherMat));
+  const tetherMesh = new THREE.Mesh(new THREE.TubeGeometry(tether, 96, 0.028, 6), tetherMat); scene.add(tetherMesh);   // only drawn when Plex is across a tailnet
   const tLab = label('', 'o3-lab o3-tether'); tLab.position.copy(tether.getPoint(0.5)).add(new THREE.Vector3(0, 0.7, 0)); scene.add(tLab);
   pick.push(giant);
   // generous invisible hit shell so the whole world (clouds, rings) answers hover, not just the core mesh
@@ -567,6 +567,7 @@ export async function start(host, status = () => {}) {
     // plex
     const P = S.plex, ss = (P && P.enabled) ? plexSessions() : [];
     plexG.visible = !!(P && P.enabled);
+    const viaTs = !!(P && P.enabled && P.tailnet); tetherMesh.visible = viaTs; tLab.visible = viaTs;
     if (P && P.enabled) {
       const ok = !(P.identity || {}).__error;
       giant.rotation.y += dt * 0.12;
@@ -622,7 +623,7 @@ export async function start(host, status = () => {}) {
           parts.push({ kind: 's', from: tmp.clone(), dir: tmp.clone().sub(PLEX_POS).normalize().add(new THREE.Vector3((Math.random() - .5) * .6, (Math.random() - .5) * .6, (Math.random() - .5) * .6)).normalize(), k: 0, s: 0.012 + Math.random() * 0.01, c: hdr(DEC[x.dec], 2.2) });
         }
       });
-      if (ok && Math.random() < (ss.length ? Math.min(1, 0.08 + ss.length * 0.15) : 0.02)) parts.push({ kind: 't', k: 0, s: 0.004 + Math.random() * 0.004 });
+      if (ok && viaTs && Math.random() < (ss.length ? Math.min(1, 0.08 + ss.length * 0.15) : 0.02)) parts.push({ kind: 't', k: 0, s: 0.004 + Math.random() * 0.004 });
 
       // acquisitions
       const Q = P.qbit && P.qbit.enabled && !P.qbit.__error ? P.qbit : null;
