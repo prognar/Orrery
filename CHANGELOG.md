@@ -13,6 +13,7 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 - The purple Tailscale line to the media giant no longer shows when there's no Plex, or when Plex is reached on the local network rather than over a tailnet. Broadcast labels no longer assume Tailscale.
 - Setup: the Connections legend no longer floats over the list of services.
 - The LAN address map no longer picks up IPv6 addresses.
+- `tools/install-hooks.sh` works in git worktrees, and the pre-push check skips tag pushes.
 
 ## [0.1.0] - 2026-11-08
 
