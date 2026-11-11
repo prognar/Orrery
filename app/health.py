@@ -272,7 +272,74 @@ def read(addr, h, ttl=8):
         v = READERS[h["kind"]](addr, h)
         if v.get("ram") and v["ram"][1] and v.get("ramPct") is None:
             v["ramPct"] = v["ram"][0] / v["ram"][1] * 100
+        assess(addr, v)
     except Exception as e:
         v = {"src": h["kind"], "__error": str(e)[:120]}
     _cache[k] = (now, v)
     return v
+
+
+# ---------------------------------------------------------------- status: is this machine OK?
+# (attention, critical) thresholds. Temperatures in °C, the rest in %.
+LIMITS = {
+    "cpuT": (80, 89), "gpuT": (83, 90), "gpuHot": (95, 105), "gpuMemT": (95, 105),
+    "ram": (85, 95), "fill": (85, 95), "life": (20, 10),
+}
+LEVEL = {0: "ok", 1: "warn", 2: "crit"}
+_fans_seen = {}        # (addr, fan name) -> highest RPM seen, to notice a fan that stops
+
+
+def _lvl(v, key, lower_is_bad=False):
+    if v is None:
+        return 0
+    a, c = LIMITS[key]
+    if lower_is_bad:
+        return 2 if v <= c else 1 if v <= a else 0
+    return 2 if v >= c else 1 if v >= a else 0
+
+
+def assess(addr, H):
+    """Rate every reading ok / warn / crit and the machine as a whole (the worst of them).
+    Adds H["status"] and H["checks"] = [{sys, label, value, level, why}] (worst first)."""
+    if not H or H.get("__error"):
+        return H
+    C = []
+    def add(sys, label, value, level, why=""):
+        C.append({"sys": sys, "label": label, "value": value, "level": level, "why": why})
+    if H.get("cpuT") is not None:
+        l = _lvl(H["cpuT"], "cpuT"); add("cpu", "CPU temperature", f"{H['cpuT']:.0f} °C", l, "CPU running hot" if l == 1 else "CPU at its thermal limit" if l else "")
+    if H.get("cpu") is not None:
+        add("cpu", "CPU load", f"{H['cpu']:.0f}%", 0)
+    for k, lab in (("gpuT", "GPU temperature"), ("gpuHot", "GPU hot spot"), ("gpuMemT", "GPU memory")):
+        if H.get(k) is not None:
+            l = _lvl(H[k], k); add("gpu", lab, f"{H[k]:.0f} °C", l, f"{lab} high" if l else "")
+    if H.get("ramPct") is not None:
+        l = _lvl(H["ramPct"], "ram"); add("ram", "Memory in use", f"{H['ramPct']:.0f}%", l, "memory almost full" if l == 2 else "memory filling up" if l else "")
+    for d in H.get("disks") or []:
+        nm = d.get("name") or "drive"
+        if d.get("used") is not None:
+            l = _lvl(d["used"], "fill"); add("disk", f"{nm} full", f"{d['used']:.0f}%", l, f"{nm} {d['used']:.0f}% full" if l else "")
+            d["level"] = l
+        if d.get("t") is not None:
+            w = d.get("tWarn") or 70
+            l = 2 if d["t"] >= w else 1 if d["t"] >= w - 5 else 0
+            add("disk", f"{nm} temperature", f"{d['t']:.0f} °C", l, f"{nm} hot" if l else ""); d["level"] = max(d.get("level", 0), l)
+        if d.get("life") is not None:
+            l = _lvl(d["life"], "life", True); add("disk", f"{nm} life left", f"{d['life']:.0f}%", l, f"{nm} wearing out" if l else ""); d["level"] = max(d.get("level", 0), l)
+    for f in H.get("fans") or []:
+        if f.get("gpu"):
+            continue                    # GPUs park their fans when cool; that's normal
+        k = (addr, f.get("name"))
+        _fans_seen[k] = max(_fans_seen.get(k, 0), f.get("rpm") or 0)
+    stopped = [n for (a, n), top in _fans_seen.items() if a == addr and top > 300 and not any(f.get("name") == n and (f.get("rpm") or 0) > 0 for f in H.get("fans") or [])]
+    for n in stopped:
+        add("fan", f"{n}", "stopped", 1, f"{n} has stopped")
+    fans = [f for f in H.get("fans") or [] if (f.get("rpm") or 0) > 0]
+    if fans:
+        add("fan", "Fans spinning", f"{len(fans)} · {max(f['rpm'] for f in fans):.0f} rpm max", 0)
+    C.sort(key=lambda c: -c["level"])
+    H["checks"] = C
+    H["level"] = max([c["level"] for c in C] or [0])
+    H["status"] = LEVEL[H["level"]]
+    H["why"] = [c["why"] for c in C if c["level"] == H["level"] and c["why"]][:3]
+    return H

@@ -95,19 +95,15 @@ The orrery is your Proxmox host, and its brass instruments are the guests. Anyth
 - The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
 - If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
 - Click a service to hide or show it as a moon.
-- **Living planets:** if the machine runs a monitoring agent, its planet *is* its health, readable at a glance:
+- **Living planets:** if the machine runs a monitoring agent, its planet tells you first whether it's OK:
 
   | You see | It means |
   |---|---|
-  | Continents, cities spreading across them | Drives, and how full each one is (the coast glows red at 90%+) |
-  | City lights flickering cyan / amber | Drive reads / writes |
-  | Sea level rising, coasts flooding | RAM in use |
-  | Wildfires | CPU load, one fire per core |
-  | Sky colour: blue → amber → pulsing red | CPU temperature |
-  | Cyclones and fast-moving cloud | Fans: one storm per spinning fan, sized by RPM |
-  | A volcanic moon with glowing cracks | The GPU: load, temperature and VRAM |
-  | Aurora: green north, magenta south | Network download / upload |
-  | Night-side city lights | Power draw |
+  | Calm blue-green world, no ring | All is well |
+  | Amber sky and an amber beacon ring | Needs a look: the label says why ("⚠ drive 89% full") |
+  | Red pulsing sky, red ring with shockwaves, glowing fissures | Critical: act now. Fires mean it's overheating |
+
+  Look closer and it shows what the machine is doing: **continents** are drives, settled from the centre as they fill; **sea level** is RAM; **spin** is CPU load; the **moon** is the GPU (glow = load, colour = temperature, arc = VRAM); **storms** are fans. Thresholds: CPU 80/89 °C, GPU 83/90 °C (hot spot and memory 95/105 °C), RAM 85/95%, drives 85/95% full, drive temperature near its own warning limit, drive life under 20/10%, and any fan that stops.
  Orrery looks for one when you add or rescan a server, or press **Connect health** to pick the agent and port yourself; it tests the connection on the spot and tells you why if it fails (usually a firewall).
 
   | Agent | Best for | Gives | Turn on |

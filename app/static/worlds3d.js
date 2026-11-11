@@ -3,7 +3,8 @@
 // Every other machine is a living world (livingworld.js) whose land, sea, fire and weather are its health.
 // Reads S.worlds (from worlds.js). Tether colour = how Orrery reaches the machine: purple Tailscale, blue LAN.
 import * as THREE from 'three';
-import { makeLiving, livingLegend, HOT_C } from './livingworld.js';
+import { makeLiving, livingLegend, LEVEL_COL } from './livingworld.js';
+const HOT_C = 85;
 
 export const LINK_COL = { tailnet: '#9d86d6', lan: '#5aa6d8' };
 const UP = '#c9a45c', DOWN = '#d14d5a';
@@ -89,18 +90,19 @@ export function makeWorlds({ scene, label, hdr, T, glowTex, pick, sunR, mediaPos
       if (e && e.look !== look) { drop(e); e = null }
       if (!e) { e = build(w, i + 1); e.look = look }
       const on = w.services.filter(s => s.on !== false), sig = on.map(s => s.key).join();
-      if (sig !== e.sig) { e.sig = sig; moonsFor(e, on, 2.85, 0.13) }
+      if (sig !== e.sig) { e.sig = sig; moonsFor(e, on, 3.2, 0.13) }
       tickMoons(e, w, dt, 0.3);
       const ok = w.up !== false, H = w.health && !w.health.__error ? w.health : null;
       e.live.update(H, dt, t, ORIGIN);
-      const maxT = H ? Math.max(H.cpuT || 0, H.gpuT || 0) : 0, hot = maxT >= HOT_C;
+      const lv = H ? H.level || 0 : 0, hot = lv === 2;
       e.halo.material.color.copy(hdr(ok ? LINK_COL[w.link] : DOWN, ok ? 0.35 : 0.6));
       e.tMat.color.copy(hdr(ok ? LINK_COL[w.link] : DOWN, 1.2));
       e.packets.forEach((p, j) => { p.visible = ok; if (ok) { e.curve.getPoint((t * 0.12 + j / 3) % 1, p.position) } });
       const up = w.services.filter(s => s.on !== false && s.up).length, non = w.services.filter(s => s.on !== false).length;
       const hp = H ? [H.cpu != null ? `cpu ${H.cpu.toFixed(0)}%${H.cpuT ? ' ' + H.cpuT.toFixed(0) + '°' : ''}` : '', H.ramPct != null ? `ram ${H.ramPct.toFixed(0)}%` : '',
                       H.gpu != null || H.gpuT ? `gpu ${H.gpu != null ? H.gpu.toFixed(0) + '%' : ''}${H.gpuT ? ' ' + H.gpuT.toFixed(0) + '°' : ''}` : ''].filter(Boolean).join(' · ') : '';
-      const lt = `<b>${esc(w.name.toUpperCase())}</b>${hp ? `<span${hot ? ' class="bad"' : ''}>${hp}</span>` : ''}<span>${ok ? `${w.link === 'tailnet' ? 'tailscale' : 'lan'}${w.ms != null ? ' · ' + w.ms.toFixed(0) + ' ms' : ''}${non ? ` · ${up}/${non} up` : ''}` : 'unreachable'}</span>`;
+      const verdict = lv && (H.why || []).length ? `<span style="color:${LEVEL_COL[lv]}">${lv === 2 ? '✖' : '⚠'} ${esc(H.why[0])}</span>` : '';
+      const lt = `<b style="${lv ? 'color:' + LEVEL_COL[lv] : ''}">${esc(w.name.toUpperCase())}</b>${verdict || (hp ? `<span>${hp}</span>` : '')}<span>${ok ? `${w.link === 'tailnet' ? 'tailscale' : 'lan'}${w.ms != null ? ' · ' + w.ms.toFixed(0) + ' ms' : ''}${non ? ` · ${up}/${non} up` : ''}` : 'unreachable'}</span>`;
       if (e.lab.element.innerHTML !== lt) e.lab.element.innerHTML = lt;
       e.lab.element.classList.toggle('alarm', hot || !ok);
       e.lab.element.classList.toggle('hot', !!hover && (hover.userData.world === w.id || (hover.userData.wsvc && hover.userData.wsvc.id === w.id)));

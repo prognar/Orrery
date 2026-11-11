@@ -58,7 +58,9 @@ function healthLine(w) {
   if (!H || H.__error) return `health: <span class="bad">${esc((H && H.src) || w.healthSrc)} not answering</span> (${how}) · ${open}${form}`;
   const bits = [H.cpu != null ? `cpu ${H.cpu.toFixed(0)}%${H.cpuT ? ' ' + H.cpuT.toFixed(0) + '°C' : ''}` : '', H.ramPct != null ? `ram ${H.ramPct.toFixed(0)}%` : '',
     H.gpu != null || H.gpuT ? `gpu ${H.gpu != null ? H.gpu.toFixed(0) + '%' : ''}${H.gpuT ? ' ' + H.gpuT.toFixed(0) + '°C' : ''}` : ''].filter(Boolean).join(' · ');
-  return `health via ${esc(H.src)} (${how})${bits ? ' · ' + bits : ''} · ${open} · <a href="#" data-whealth="${esc(w.id)}" data-v="${w.healthMode === 'pinned' ? 'auto' : 'off'}">${w.healthMode === 'pinned' ? 'disconnect' : 'hide'}</a>${form}`;
+  const LC = ['var(--verd)', '#f0a63a', '#e2453c'], LW = ['OK', 'ATTENTION', 'CRITICAL'], lv = H.level || 0;
+  const verdict = `<b style="color:${LC[lv]}">${LW[lv]}</b>${lv && (H.why || []).length ? ': ' + esc(H.why.join(', ')) : ''} · `;
+  return `${verdict}health via ${esc(H.src)} (${how})${bits ? ' · ' + bits : ''} · ${open} · <a href="#" data-whealth="${esc(w.id)}" data-v="${w.healthMode === 'pinned' ? 'auto' : 'off'}">${w.healthMode === 'pinned' ? 'disconnect' : 'hide'}</a>${form}`;
 }
 function render() {
   const host = $('#worlds-card'); if (!host || !W) return;
