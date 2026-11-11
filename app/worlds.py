@@ -200,6 +200,8 @@ def clean(cur, patch):
         if isinstance(v.get("services"), list): w["services"] = [s for s in v["services"] if s in tkeys][:12]
         if isinstance(v.get("off"), list): w["off"] = [s for s in v["off"] if s in tkeys][:24]     # services hidden as moons
         if v.get("health") in ("auto", "off"): w["health"] = v["health"]
+        if isinstance(v.get("health"), dict) and v["health"].get("kind") in health.READERS:   # connected on purpose
+            w["health"] = {k: v["health"][k] for k in ("kind", "port", "api", "base", "node") if k in v["health"]}
         if not w.get("addr"):
             continue
         w.setdefault("name", w["addr"]); w.setdefault("type", "generic"); w.setdefault("enabled", True)
@@ -265,12 +267,10 @@ def status():
             t = T.get(k) or {}
             p = ports.get(k) or next(iter([h["port"] for h in (t.get("match") or {}).get("http", [])] + (t.get("match") or {}).get("ports", [])), None)
             svc.append({"key": k, "label": t.get("label", k), "look": t.get("look", "generic"), "port": p, "on": k not in off})
-        hl = sc.get("health") if w.get("health") != "off" else None
-        if w.get("enabled", True) and w.get("health") != "off" and not hl and now - sc.get("hts", 0) > 300 and _state.get("hdet") != w["addr"]:
-            _state["hdet"] = w["addr"]                      # agent not found yet: look again in the background every 5 min
-            threading.Thread(target=lambda a=w["addr"]: (_detect_health(a), _state.update(hdet=None)), daemon=True).start()
+        pinned = isinstance(w.get("health"), dict)
+        hl = w["health"] if pinned else sc.get("health") if w.get("health") != "off" else None
         out.append({"id": wid, "name": w.get("name"), "addr": w["addr"], "type": w.get("type", "generic"), "_h": hl,
-                    "healthMode": w.get("health", "auto"), "healthSrc": (hl or {}).get("kind"),
+                    "healthMode": "pinned" if pinned else w.get("health", "auto"), "healthSrc": (hl or {}).get("kind"),
                     "typeLabel": TYPES.get(w.get("type"), "Server"), "enabled": w.get("enabled", True),
                     "link": "tailnet" if tailnet(w["addr"]) else "lan", "media": w.get("type") == "media" and w["addr"] == ph,
                     "services": svc, "scanned": sc.get("ts"), "scanning": _state["scanning"] == w["addr"]})
@@ -301,7 +301,14 @@ def status():
     return out
 
 
+def connect_health(wid, kind, port=None):
+    w = worlds().get(wid)
+    if not w:
+        return None, "No such server."
+    return health.connect(kind, w["addr"], port, w.get("name"), (_cfg.get("netdata") or {}).get("url"))
+
+
 def api():
     cands, feeds = candidates()
-    return {"types": TYPES, "worlds": status(), "candidates": cands[:40], "feeds": feeds,
+    return {"types": TYPES, "agents": {k: {"label": v[0], "port": v[1]} for k, v in health.AGENTS.items()}, "worlds": status(), "candidates": cands[:40], "feeds": feeds,
             "scanning": _state["scanning"], "queue": list(_state["queue"]), "plexGuest": plex_guest()}

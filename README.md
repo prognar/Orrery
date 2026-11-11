@@ -95,7 +95,7 @@ The orrery is your Proxmox host, and its brass instruments are the guests. Anyth
 - The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
 - If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
 - Click a service to hide or show it as a moon.
-- **Health:** if the machine runs a monitoring agent, its planet shows what it's doing: the surface warms and spins faster with CPU load, a brass arc shows RAM, a teal arc GPU load, and it pulses red at 85 °C or more. Orrery finds the agent by itself:
+- **Health:** if the machine runs a monitoring agent, its planet shows what it's doing: the surface warms and spins faster with CPU load, a brass arc shows RAM, a teal arc GPU load, and it pulses red at 85 °C or more. Orrery looks for one when you add or rescan a server, or press **Connect health** to pick the agent and port yourself; it tests the connection on the spot and tells you why if it fails (usually a firewall).
 
   | Agent | Best for | Gives | Turn on |
   |---|---|---|---|

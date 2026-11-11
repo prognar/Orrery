@@ -19,7 +19,8 @@ css.textContent = `
 #v-setup .wl .dt{color:var(--faint);font-size:10px}
 #v-setup .wl .mo span.tg{cursor:pointer;user-select:none}#v-setup .wl .mo span.tg:hover{border-color:var(--brass)}
 #v-setup .wl .mo span.tg.off{color:var(--faint);border-style:dashed;text-decoration:line-through}
-#v-setup .wl .hl{grid-column:2/-1;font-size:10px;color:var(--muted)}#v-setup .wl .hl a{color:var(--brass)}#v-setup .wl .hl .bad{color:var(--rose)}
+#v-setup .wl .hl{grid-column:2/-1;font-size:10px;color:var(--muted)}
+#v-setup .wl .hl button{margin-left:2px}#v-setup .hc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}#v-setup .hc input{width:60px}#v-setup .hc .hres{flex-basis:100%;font-size:11px}#v-setup .hc .hres.ok{color:var(--verd)}#v-setup .hc .hres.bad{color:var(--rose)}#v-setup .wl .hl a{color:var(--brass)}#v-setup .wl .hl .bad{color:var(--rose)}
 #v-setup .wl button{background:none;border:1px solid var(--line);color:var(--brass);font:inherit;font-size:10px;letter-spacing:.1em;padding:3px 9px;cursor:pointer;white-space:nowrap}
 #v-setup .wl button:hover{border-color:var(--brass)}#v-setup .wl button.x{border:none;color:var(--faint);font-size:13px;padding:0 4px}#v-setup .wl button.x:hover{color:var(--rose)}
 #v-setup .wl select{max-width:150px}
@@ -30,10 +31,10 @@ css.textContent = `
 `;
 document.head.appendChild(css);
 
-let W = null, busy = false;
+let W = null, busy = false, paused = false;
 async function poll() {
   try { W = await fetch('/api/next/worlds').then(r => r.json()); S.worlds = W.worlds } catch (e) { return }
-  if (S.view === 'setup') render();
+  if (S.view === 'setup' && !paused) render();
 }
 poll(); setInterval(poll, 10000);
 globalThis.orreryWorlds = { refresh: poll };
@@ -46,13 +47,18 @@ const svcChips = (list, live) => list.length
 
 const HELP = 'https://github.com/prognar/Orrery#other-servers';
 function healthLine(w) {
-  const H = w.health;
+  const H = w.health, form = `<span class="hc" data-hform="${esc(w.id)}" hidden>
+      <select data-hkind>${Object.entries(W.agents || {}).map(([k, a]) => `<option value="${k}" data-port="${a.port}">${esc(a.label)}</option>`).join('')}</select>
+      port <input data-hport size="5" value="${(Object.values(W.agents || {})[0] || {}).port || ''}"> <button data-hgo="${esc(w.id)}">CONNECT</button>
+      <span class="hres"></span></span>`;
+  const open = `<button data-hopen="${esc(w.id)}">${w.healthSrc ? 'CHANGE' : 'CONNECT HEALTH'}</button>`;
   if (w.healthMode === 'off') return `health hidden · <a href="#" data-whealth="${esc(w.id)}" data-v="auto">show</a>`;
-  if (!w.healthSrc) return `no health agent found · install <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor" target="_blank" rel="noopener">LibreHardwareMonitor</a> (Windows, enable its Remote Web Server), <a href="https://github.com/nicolargo/glances" target="_blank" rel="noopener">Glances</a> (<code>glances -w</code>) or <a href="https://github.com/netdata/netdata" target="_blank" rel="noopener">Netdata</a> · checked every 5 min`;
-  if (!H || H.__error) return `health: <span class="bad">${esc((H && H.src) || w.healthSrc)} not answering</span>`;
+  if (!w.healthSrc) return `no health agent found · ${open} · install <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor" target="_blank" rel="noopener">LibreHardwareMonitor</a> (Windows: Remote Web Server on), <a href="https://github.com/nicolargo/glances" target="_blank" rel="noopener">Glances</a> (<code>glances -w</code>) or <a href="https://github.com/netdata/netdata" target="_blank" rel="noopener">Netdata</a>${form}`;
+  const how = w.healthMode === 'pinned' ? 'connected by you' : 'found automatically';
+  if (!H || H.__error) return `health: <span class="bad">${esc((H && H.src) || w.healthSrc)} not answering</span> (${how}) · ${open}${form}`;
   const bits = [H.cpu != null ? `cpu ${H.cpu.toFixed(0)}%${H.cpuT ? ' ' + H.cpuT.toFixed(0) + '°C' : ''}` : '', H.ramPct != null ? `ram ${H.ramPct.toFixed(0)}%` : '',
     H.gpu != null || H.gpuT ? `gpu ${H.gpu != null ? H.gpu.toFixed(0) + '%' : ''}${H.gpuT ? ' ' + H.gpuT.toFixed(0) + '°C' : ''}` : ''].filter(Boolean).join(' · ');
-  return `health via ${esc(H.src)}${bits ? ' · ' + bits : ''} · <a href="#" data-whealth="${esc(w.id)}" data-v="off">hide</a>`;
+  return `health via ${esc(H.src)} (${how})${bits ? ' · ' + bits : ''} · ${open} · <a href="#" data-whealth="${esc(w.id)}" data-v="${w.healthMode === 'pinned' ? 'auto' : 'off'}">${w.healthMode === 'pinned' ? 'disconnect' : 'hide'}</a>${form}`;
 }
 function render() {
   const host = $('#worlds-card'); if (!host || !W) return;
@@ -95,6 +101,7 @@ const sid = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').repla
 
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.dataset.hkind !== undefined) { const o = t.options[t.selectedIndex]; const pi = t.closest('.hc').querySelector('[data-hport]'); if (pi) pi.value = o.dataset.port; return }
   if (t.dataset.won) save({ worlds: { [t.dataset.won]: { enabled: t.checked } } }, t.checked ? 'Planet on.' : 'Planet off.');
   if (t.dataset.wtype) save({ worlds: { [t.dataset.wtype]: { type: t.value } } }, 'Type saved.');
 });
@@ -106,7 +113,24 @@ document.addEventListener('click', async e => {
     off.has(tg.dataset.key) ? off.delete(tg.dataset.key) : off.add(tg.dataset.key);
     return save({ worlds: { [w.id]: { off: [...off] } } }, `${w.name}: ${tg.textContent.trim()} ${off.has(tg.dataset.key) ? 'hidden' : 'shown'}.`);
   }
-  if (hl && hl.closest('#worlds-card')) { e.preventDefault(); return save({ worlds: { [hl.dataset.whealth]: { health: hl.dataset.v } } }, 'Saved.') }
+  if (hl && hl.closest('#worlds-card')) {
+    e.preventDefault();
+    try { await globalThis.orreryPost('/api/next/worlds/health', { id: hl.dataset.whealth, kind: hl.dataset.v }) } catch (er) {}
+    return poll();
+  }
+  const ho = e.target.closest('[data-hopen]');
+  if (ho) { const f = document.querySelector(`[data-hform="${CSS.escape(ho.dataset.hopen)}"]`); if (f) { f.hidden = !f.hidden; paused = !f.hidden } return }
+  const hg = e.target.closest('[data-hgo]');
+  if (hg) {
+    const f = hg.closest('.hc'), res = f.querySelector('.hres');
+    res.className = 'hres'; res.textContent = 'Testing…'; hg.disabled = true;
+    try {
+      const r = await globalThis.orreryPost('/api/next/worlds/health', { id: hg.dataset.hgo, kind: f.querySelector('[data-hkind]').value, port: +f.querySelector('[data-hport]').value || null });
+      if (r.ok) { res.className = 'hres ok'; res.textContent = 'Connected.'; paused = false; setTimeout(poll, 800) }
+      else { res.className = 'hres bad'; res.textContent = r.error || 'Could not connect.' }
+    } catch (er) { res.className = 'hres bad'; res.textContent = er.message }
+    hg.disabled = false; return;
+  }
   const t = e.target.closest('button'); if (!t || !t.closest('#worlds-card')) return;
   if (t.dataset.wscan) { try { await globalThis.orreryPost('/api/next/worlds/scan', { addr: t.dataset.wscan }); t.textContent = 'QUEUED'; setTimeout(poll, 4000); setTimeout(poll, 20000) } catch (er) {} }
   if (t.dataset.wdel && confirm('Remove this server from the orrery?')) save({ worlds: { [t.dataset.wdel]: null } }, 'Removed.');

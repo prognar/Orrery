@@ -350,6 +350,16 @@ def post(path, headers, body):
         return 200, {"ok": True, "restarting": go, "pendingRestart": _pending["restart"] and not go}
     if path == "/api/next/rescan":
         return 200, {"started": rescan(force=True)}
+    if path == "/api/next/worlds/health":
+        try: d = json.loads(body or b"{}")
+        except ValueError: return 400, {"error": "bad json"}
+        if not isinstance(d, dict) or not d.get("id"): return 400, {"error": "id required"}
+        if d.get("kind") in ("auto", "off"):
+            save({"worlds": {d["id"]: {"health": d["kind"]}}}); return 200, {"ok": True}
+        h, why = worlds.connect_health(d["id"], d.get("kind"), d.get("port"))
+        if not h: return 200, {"ok": False, "error": why}
+        save({"worlds": {d["id"]: {"health": h}}})
+        return 200, {"ok": True, "health": h}
     if path == "/api/next/worlds/scan":
         try: addr = (json.loads(body or b"{}").get("addr") or "").strip()
         except (ValueError, AttributeError): return 400, {"error": "bad json"}

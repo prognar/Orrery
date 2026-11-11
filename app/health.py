@@ -7,7 +7,7 @@
 
 detect() is called when a server is scanned; read() is cached for a few seconds. Every value is optional.
 """
-import json, re, time, urllib.parse, urllib.request
+import errno, json, re, socket, time, urllib.parse, urllib.request
 
 UA = {"User-Agent": "orrery-health/1"}
 LHM_PORT, GLANCES_PORT, NETDATA_PORT = 8085, 61208, 19999
@@ -146,6 +146,64 @@ def _netdata(addr, h):
     except Exception:
         pass
     return out
+
+
+AGENTS = {"lhm": ("LibreHardwareMonitor", LHM_PORT), "glances": ("Glances", GLANCES_PORT), "netdata": ("Netdata", NETDATA_PORT)}
+
+
+def _tcp(addr, port, timeout=3):
+    s = socket.socket(); s.settimeout(timeout)
+    try:
+        rc = s.connect_ex((addr, port))          # a timeout comes back as an error code, not an exception
+    except socket.timeout:
+        return "timeout"
+    except OSError:
+        return "unreachable"
+    finally:
+        s.close()
+    if rc == 0: return "open"
+    if rc == errno.ECONNREFUSED: return "refused"
+    if rc in (errno.EAGAIN, errno.EWOULDBLOCK, errno.ETIMEDOUT, errno.EINPROGRESS): return "timeout"
+    return "unreachable"
+
+
+def connect(kind, addr, port=None, name="", nd_parent=None):
+    """The user picked an agent on purpose: test it now. Returns (config, None) or (None, reason)."""
+    if kind not in AGENTS:
+        return None, "Unknown agent."
+    label, dport = AGENTS[kind]
+    port = int(port or dport)
+    if kind == "netdata" and nd_parent and port == NETDATA_PORT:     # streamed to a parent? read it there
+        h = detect(addr, name, nd_parent)
+        if h and h["kind"] == "netdata":
+            return h, None
+    st = _tcp(addr, port)
+    if st == "timeout":
+        return None, (f"No answer from {addr}:{port} within 3 s. That's almost always a firewall: on Windows, allow inbound TCP {port} "
+                      f"for your home network (and check the network is set to Private).")
+    if st == "refused":
+        return None, f"{addr} answered, but nothing is listening on port {port}. Is {label} running with its web server switched on?"
+    if st != "open":
+        return None, f"Can't reach {addr} at all from Orrery."
+    h = {"kind": kind, "port": port}
+    if kind == "netdata":
+        h = {"kind": "netdata", "base": f"http://{addr}:{port}"}
+    if kind == "glances":
+        for v in ("4", "3"):
+            try:
+                if "cpu" in _get(f"http://{addr}:{port}/api/{v}/quicklook", 4):
+                    h["api"] = v; break
+            except Exception:
+                pass
+        else:
+            return None, f"Port {port} is open, but it doesn't answer like Glances (try `glances -w`)."
+    try:
+        v = READERS[kind](addr, h)
+    except Exception as e:
+        return None, f"Port {port} is open, but it doesn't answer like {label} ({str(e)[:80]})."
+    if not any(v.get(k) is not None for k in ("cpu", "cpuT", "ram", "gpu")):
+        return None, f"{label} answered but reported no CPU, RAM or GPU readings. On Windows, run it as administrator."
+    return h, None
 
 
 READERS = {"lhm": _lhm, "glances": _glances, "netdata": _netdata}
