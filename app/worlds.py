@@ -9,7 +9,7 @@ a server by address. Each server has a type (media server, NAS, desktop, home hu
 import ipaddress, json, os, re, socket, threading, time, urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
-import discover
+import discover, health
 
 TYPES = {"media": "Media server", "nas": "NAS / storage", "pc": "Desktop / PC", "home": "Home hub", "generic": "Server"}
 SKIP_TPL = {"generic", "orrery", "database", "tailscale", "isponsorblocktv", "mosquitto"}
@@ -109,18 +109,40 @@ def _tpls():
     return [t for t in discover.load_templates()["templates"] if t["key"] not in SKIP_TPL]
 
 
+def _name_of(addr):
+    for w in worlds().values():
+        if w.get("addr") == addr:
+            return w.get("name")
+    return (_scan.get(addr) or {}).get("name") or ""
+
+
+def _persist():
+    tmp = os.path.join(_data, "worlds_scan.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump(_scan, f)
+    os.replace(tmp, os.path.join(_data, "worlds_scan.json"))
+
+
+def _detect_health(addr):
+    hl = health.detect(addr, _name_of(addr), (_cfg.get("netdata") or {}).get("url"))
+    with _lock:
+        sc = _scan.setdefault(addr, {})
+        sc["health"], sc["hts"] = hl, time.time()
+        _persist()
+    return hl
+
+
 def scan(addr, name=""):
-    """Find which known services answer on addr. Only an HTTP fingerprint counts: a bare open port is too vague."""
+    """Find which known services answer on addr. Only an HTTP fingerprint counts: a bare open port is too vague.
+    Also notes which monitoring agent (LibreHardwareMonitor, Glances, Netdata) reports the machine's health."""
     tpls = _tpls()
     _, hits = discover.probe_guest(addr, tpls)
     svc = [t["key"] for t in tpls if t["key"] in hits]
     with _lock:
-        _scan[addr] = {"ts": time.time(), "services": svc,
-                       "ports": {k: hits[k][0]["port"] for k in svc}, "name": name}
-        tmp = os.path.join(_data, "worlds_scan.json.tmp")
-        with open(tmp, "w") as f:
-            json.dump(_scan, f)
-        os.replace(tmp, os.path.join(_data, "worlds_scan.json"))
+        old = _scan.get(addr) or {}
+        _scan[addr] = {"ts": time.time(), "services": svc, "ports": {k: hits[k][0]["port"] for k in svc},
+                       "name": name or old.get("name") or "", "health": old.get("health"), "hts": old.get("hts", 0)}
+    _detect_health(addr)
     return svc
 
 
@@ -176,6 +198,8 @@ def clean(cur, patch):
         if v.get("type") in TYPES: w["type"] = v["type"]
         if isinstance(v.get("enabled"), bool): w["enabled"] = v["enabled"]
         if isinstance(v.get("services"), list): w["services"] = [s for s in v["services"] if s in tkeys][:12]
+        if isinstance(v.get("off"), list): w["off"] = [s for s in v["off"] if s in tkeys][:24]     # services hidden as moons
+        if v.get("health") in ("auto", "off"): w["health"] = v["health"]
         if not w.get("addr"):
             continue
         w.setdefault("name", w["addr"]); w.setdefault("type", "generic"); w.setdefault("enabled", True)
@@ -231,16 +255,22 @@ def _port_up(addr, port, ttl=20):
 def status():
     T = {t["key"]: t for t in discover.load_templates()["templates"]}
     ph, out, jobs = _plex_host(), [], []
+    now = time.time()
     for wid, w in worlds().items():
         sc = _scan.get(w["addr"]) or {}
-        keys = w.get("services") or sc.get("services") or []
-        ports = sc.get("ports") or {}
+        keys = list(dict.fromkeys((w.get("services") or []) + (sc.get("services") or [])))   # configured first, then found
+        ports, off = sc.get("ports") or {}, set(w.get("off") or [])
         svc = []
         for k in keys:
             t = T.get(k) or {}
             p = ports.get(k) or next(iter([h["port"] for h in (t.get("match") or {}).get("http", [])] + (t.get("match") or {}).get("ports", [])), None)
-            svc.append({"key": k, "label": t.get("label", k), "look": t.get("look", "generic"), "port": p})
-        out.append({"id": wid, "name": w.get("name"), "addr": w["addr"], "type": w.get("type", "generic"),
+            svc.append({"key": k, "label": t.get("label", k), "look": t.get("look", "generic"), "port": p, "on": k not in off})
+        hl = sc.get("health") if w.get("health") != "off" else None
+        if w.get("enabled", True) and w.get("health") != "off" and not hl and now - sc.get("hts", 0) > 300 and _state.get("hdet") != w["addr"]:
+            _state["hdet"] = w["addr"]                      # agent not found yet: look again in the background every 5 min
+            threading.Thread(target=lambda a=w["addr"]: (_detect_health(a), _state.update(hdet=None)), daemon=True).start()
+        out.append({"id": wid, "name": w.get("name"), "addr": w["addr"], "type": w.get("type", "generic"), "_h": hl,
+                    "healthMode": w.get("health", "auto"), "healthSrc": (hl or {}).get("kind"),
                     "typeLabel": TYPES.get(w.get("type"), "Server"), "enabled": w.get("enabled", True),
                     "link": "tailnet" if tailnet(w["addr"]) else "lan", "media": w.get("type") == "media" and w["addr"] == ph,
                     "services": svc, "scanned": sc.get("ts"), "scanning": _state["scanning"] == w["addr"]})
@@ -249,11 +279,17 @@ def status():
             if not w["enabled"]:
                 continue
             for s in w["services"]:
-                if s["port"]:
+                if s["port"] and s["on"]:
                     jobs.append((s, ex.submit(_port_up, w["addr"], s["port"])))
-        for s, f in jobs:
-            s["up"], s["ms"] = f.result()
+            if w["_h"]:
+                jobs.append((w, ex.submit(health.read, w["addr"], w["_h"])))
+        for o, f in jobs:
+            if o is not None and "key" in o:
+                o["up"], o["ms"] = f.result()
+            else:
+                o["health"] = f.result()
     for w in out:
+        w.pop("_h", None)
         ms = [s["ms"] for s in w["services"] if s.get("ms") is not None]
         if not ms and w["enabled"]:                # no known service answering: is the machine itself there?
             for port in MACHINE_PORTS:

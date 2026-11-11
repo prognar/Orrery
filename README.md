@@ -94,6 +94,14 @@ The orrery is your Proxmox host, and its brass instruments are the guests. Anyth
 - Give each a type: **Media server**, **NAS**, **Desktop / PC**, **Home hub** or **Server**. A media server running Plex is drawn as the big inhabited world, with streams orbiting and downloads spiralling in.
 - The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
 - If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
+- Click a service to hide or show it as a moon.
+- **Health:** if the machine runs a monitoring agent, its planet shows what it's doing: the surface warms and spins faster with CPU load, a brass arc shows RAM, a teal arc GPU load, and it pulses red at 85 °C or more. Orrery finds the agent by itself:
+
+  | Agent | Best for | Gives | Turn on |
+  |---|---|---|---|
+  | [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) | Windows | CPU/GPU temperature and load, RAM, VRAM, drive temps | Options → Remote Web Server → Run (port 8085) |
+  | [Glances](https://github.com/nicolargo/glances) | Linux, macOS, Raspberry Pi | CPU, RAM, sensors | `glances -w` (port 61208) |
+  | [Netdata](https://github.com/netdata/netdata) | anything | CPU, RAM, uptime | install the agent, or stream it to a Netdata parent Orrery already reads |
 
 ## Supported services
 

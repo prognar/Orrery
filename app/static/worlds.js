@@ -17,6 +17,9 @@ css.textContent = `
 #v-setup .wl .mo span{border:1px solid var(--line);padding:0 6px;color:var(--muted)}
 #v-setup .wl .mo span.up{color:var(--verd);border-color:var(--verd-dim)}#v-setup .wl .mo span.dn{color:var(--rose)}
 #v-setup .wl .dt{color:var(--faint);font-size:10px}
+#v-setup .wl .mo span.tg{cursor:pointer;user-select:none}#v-setup .wl .mo span.tg:hover{border-color:var(--brass)}
+#v-setup .wl .mo span.tg.off{color:var(--faint);border-style:dashed;text-decoration:line-through}
+#v-setup .wl .hl{grid-column:2/-1;font-size:10px;color:var(--muted)}#v-setup .wl .hl a{color:var(--brass)}#v-setup .wl .hl .bad{color:var(--rose)}
 #v-setup .wl button{background:none;border:1px solid var(--line);color:var(--brass);font:inherit;font-size:10px;letter-spacing:.1em;padding:3px 9px;cursor:pointer;white-space:nowrap}
 #v-setup .wl button:hover{border-color:var(--brass)}#v-setup .wl button.x{border:none;color:var(--faint);font-size:13px;padding:0 4px}#v-setup .wl button.x:hover{color:var(--rose)}
 #v-setup .wl select{max-width:150px}
@@ -41,6 +44,16 @@ const svcChips = (list, live) => list.length
   ? list.map(s => typeof s === 'string' ? `<span>${esc(s)}</span>` : `<span class="${live ? (s.up ? 'up' : s.up === false ? 'dn' : '') : ''}" title="${esc(s.label)}${s.port ? ' · port ' + s.port : ''}">${live && s.up === false ? '✕ ' : ''}${esc(s.label)}</span>`).join('')
   : '<span style="border:none;color:var(--faint)">no known services found yet</span>';
 
+const HELP = 'https://github.com/prognar/Orrery#other-servers';
+function healthLine(w) {
+  const H = w.health;
+  if (w.healthMode === 'off') return `health hidden · <a href="#" data-whealth="${esc(w.id)}" data-v="auto">show</a>`;
+  if (!w.healthSrc) return `no health agent found · install <a href="https://github.com/LibreHardwareMonitor/LibreHardwareMonitor" target="_blank" rel="noopener">LibreHardwareMonitor</a> (Windows, enable its Remote Web Server), <a href="https://github.com/nicolargo/glances" target="_blank" rel="noopener">Glances</a> (<code>glances -w</code>) or <a href="https://github.com/netdata/netdata" target="_blank" rel="noopener">Netdata</a> · checked every 5 min`;
+  if (!H || H.__error) return `health: <span class="bad">${esc((H && H.src) || w.healthSrc)} not answering</span>`;
+  const bits = [H.cpu != null ? `cpu ${H.cpu.toFixed(0)}%${H.cpuT ? ' ' + H.cpuT.toFixed(0) + '°C' : ''}` : '', H.ramPct != null ? `ram ${H.ramPct.toFixed(0)}%` : '',
+    H.gpu != null || H.gpuT ? `gpu ${H.gpu != null ? H.gpu.toFixed(0) + '%' : ''}${H.gpuT ? ' ' + H.gpuT.toFixed(0) + '°C' : ''}` : ''].filter(Boolean).join(' · ');
+  return `health via ${esc(H.src)}${bits ? ' · ' + bits : ''} · <a href="#" data-whealth="${esc(w.id)}" data-v="off">hide</a>`;
+}
 function render() {
   const host = $('#worlds-card'); if (!host || !W) return;
   const on = W.worlds.filter(w => w.enabled).length;
@@ -51,7 +64,8 @@ function render() {
         <span class="dt">${w.enabled ? (w.up ? ` · ${(w.ms || 0).toFixed(0)} ms` : w.up === false ? ' · <span class="bad">unreachable</span>' : '') : ' · off'}${w.media ? ' · Plex' : ''}${w.scanning ? ' · scanning…' : ''}</span></div>
       ${typeSel(w.id, w.type)}
       <span><button data-wscan="${esc(w.addr)}" title="look for services again">RESCAN</button><button class="x" data-wdel="${esc(w.id)}" title="remove">✕</button></span>
-      <div class="mo">${svcChips(w.services, w.enabled)}</div></div>`).join('');
+      <div class="mo">${w.services.length ? w.services.map(sv => `<span class="tg ${sv.on === false ? 'off' : w.enabled ? (sv.up ? 'up' : sv.up === false ? 'dn' : '') : ''}" data-wtog="${esc(w.id)}" data-key="${esc(sv.key)}" title="${sv.on === false ? 'hidden: click to show as a moon' : 'click to hide this moon'}${sv.port ? ' · port ' + sv.port : ''}">${w.enabled && sv.on !== false && sv.up === false ? '✕ ' : ''}${esc(sv.label)}</span>`).join('') : '<span style="border:none;color:var(--faint)">no known services found yet</span>'}</div>
+      <div class="hl">${healthLine(w)}</div></div>`).join('');
   const withSvc = W.candidates.filter(c => c.services.length), rest = W.candidates.filter(c => !c.services.length);
   const cand = c => `<div class="wl"><span></span>
       <div class="nm"><b>${esc(c.name)}</b><span class="ad">${esc(c.addr)}</span>${linkPill(c.link)}<span class="dt"> · ${esc(c.detail || c.source)}${W.scanning === c.addr || W.queue.includes(c.addr) ? ' · scanning…' : ''}</span></div>
@@ -85,6 +99,14 @@ document.addEventListener('change', e => {
   if (t.dataset.wtype) save({ worlds: { [t.dataset.wtype]: { type: t.value } } }, 'Type saved.');
 });
 document.addEventListener('click', async e => {
+  const tg = e.target.closest('[data-wtog]'), hl = e.target.closest('[data-whealth]');
+  if (tg && tg.closest('#worlds-card')) {
+    const w = W.worlds.find(x => x.id === tg.dataset.wtog); if (!w) return;
+    const off = new Set(w.services.filter(s => s.on === false).map(s => s.key));
+    off.has(tg.dataset.key) ? off.delete(tg.dataset.key) : off.add(tg.dataset.key);
+    return save({ worlds: { [w.id]: { off: [...off] } } }, `${w.name}: ${tg.textContent.trim()} ${off.has(tg.dataset.key) ? 'hidden' : 'shown'}.`);
+  }
+  if (hl && hl.closest('#worlds-card')) { e.preventDefault(); return save({ worlds: { [hl.dataset.whealth]: { health: hl.dataset.v } } }, 'Saved.') }
   const t = e.target.closest('button'); if (!t || !t.closest('#worlds-card')) return;
   if (t.dataset.wscan) { try { await globalThis.orreryPost('/api/next/worlds/scan', { addr: t.dataset.wscan }); t.textContent = 'QUEUED'; setTimeout(poll, 4000); setTimeout(poll, 20000) } catch (er) {} }
   if (t.dataset.wdel && confirm('Remove this server from the orrery?')) save({ worlds: { [t.dataset.wdel]: null } }, 'Removed.');
