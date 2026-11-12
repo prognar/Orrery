@@ -286,6 +286,21 @@ LIMITS = {
     "ram": (85, 95), "fill": (85, 95), "life": (20, 10),
 }
 LEVEL = {0: "ok", 1: "warn", 2: "crit"}
+CALM = {"cpuT": 60, "gpuT": 65, "gpuHot": 75, "gpuMemT": 80, "ram": 65, "fill": 70, "life": 50}
+SLOW = {"disk"}          # climate: changes over weeks. Everything else is weather: changes in seconds.
+
+
+def stress(v, key, lower_is_bad=False):
+    """0 = calm, 1 = needs attention, 2 = critical, smooth in between (eased so 'fine' stays green)."""
+    if v is None:
+        return 0.0
+    calm, (warn, crit) = CALM[key], LIMITS[key]
+    if lower_is_bad:
+        v, calm, warn, crit = -v, -calm, -warn, -crit
+    if v >= crit: return 2.0
+    if v >= warn: return 1.0 + (v - warn) / (crit - warn)
+    if v <= calm: return 0.0
+    return ((v - calm) / (warn - calm)) ** 2
 _fans_seen = {}        # (addr, fan name) -> highest RPM seen, to notice a fan that stops
 
 
@@ -304,28 +319,28 @@ def assess(addr, H):
     if not H or H.get("__error"):
         return H
     C = []
-    def add(sys, label, value, level, why=""):
-        C.append({"sys": sys, "label": label, "value": value, "level": level, "why": why})
+    def add(sys, label, value, level, why="", st=None):
+        C.append({"sys": sys, "label": label, "value": value, "level": level, "why": why, "stress": float(level) if st is None else st})
     if H.get("cpuT") is not None:
-        l = _lvl(H["cpuT"], "cpuT"); add("cpu", "CPU temperature", f"{H['cpuT']:.0f} °C", l, "CPU running hot" if l == 1 else "CPU at its thermal limit" if l else "")
+        l = _lvl(H["cpuT"], "cpuT"); add("cpu", "CPU temperature", f"{H['cpuT']:.0f} °C", l, "CPU running hot" if l == 1 else "CPU at its thermal limit" if l else "", stress(H["cpuT"], "cpuT"))
     if H.get("cpu") is not None:
         add("cpu", "CPU load", f"{H['cpu']:.0f}%", 0)
     for k, lab in (("gpuT", "GPU temperature"), ("gpuHot", "GPU hot spot"), ("gpuMemT", "GPU memory")):
         if H.get(k) is not None:
-            l = _lvl(H[k], k); add("gpu", lab, f"{H[k]:.0f} °C", l, f"{lab} high" if l else "")
+            l = _lvl(H[k], k); add("gpu", lab, f"{H[k]:.0f} °C", l, f"{lab} high" if l else "", stress(H[k], k))
     if H.get("ramPct") is not None:
-        l = _lvl(H["ramPct"], "ram"); add("ram", "Memory in use", f"{H['ramPct']:.0f}%", l, "memory almost full" if l == 2 else "memory filling up" if l else "")
+        l = _lvl(H["ramPct"], "ram"); add("ram", "Memory in use", f"{H['ramPct']:.0f}%", l, "memory almost full" if l == 2 else "memory filling up" if l else "", stress(H["ramPct"], "ram"))
     for d in H.get("disks") or []:
         nm = d.get("name") or "drive"
         if d.get("used") is not None:
-            l = _lvl(d["used"], "fill"); add("disk", f"{nm} full", f"{d['used']:.0f}%", l, f"{nm} {d['used']:.0f}% full" if l else "")
+            l = _lvl(d["used"], "fill"); add("disk", f"{nm} full", f"{d['used']:.0f}%", l, f"{nm} {d['used']:.0f}% full" if l else "", stress(d["used"], "fill"))
             d["level"] = l
         if d.get("t") is not None:
             w = d.get("tWarn") or 70
             l = 2 if d["t"] >= w else 1 if d["t"] >= w - 5 else 0
             add("disk", f"{nm} temperature", f"{d['t']:.0f} °C", l, f"{nm} hot" if l else ""); d["level"] = max(d.get("level", 0), l)
         if d.get("life") is not None:
-            l = _lvl(d["life"], "life", True); add("disk", f"{nm} life left", f"{d['life']:.0f}%", l, f"{nm} wearing out" if l else ""); d["level"] = max(d.get("level", 0), l)
+            l = _lvl(d["life"], "life", True); add("disk", f"{nm} life left", f"{d['life']:.0f}%", l, f"{nm} wearing out" if l else "", stress(d["life"], "life", True)); d["level"] = max(d.get("level", 0), l)
     for f in H.get("fans") or []:
         if f.get("gpu"):
             continue                    # GPUs park their fans when cool; that's normal
@@ -342,4 +357,6 @@ def assess(addr, H):
     H["level"] = max([c["level"] for c in C] or [0])
     H["status"] = LEVEL[H["level"]]
     H["why"] = [c["why"] for c in C if c["level"] == H["level"] and c["why"]][:3]
+    H["climate"] = round(max([c["stress"] for c in C if c["sys"] in SLOW] or [0]), 3)       # land and sea
+    H["weather"] = round(max([c["stress"] for c in C if c["sys"] not in SLOW] or [0]), 3)   # sky and clouds
     return H

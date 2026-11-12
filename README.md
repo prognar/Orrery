@@ -95,15 +95,14 @@ The orrery is your Proxmox host, and its brass instruments are the guests. Anyth
 - The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
 - If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
 - Click a service to hide or show it as a moon.
-- **Living planets:** if the machine runs a monitoring agent, its planet tells you first whether it's OK:
+- **Living planets, Eden to Hellscape:** if the machine runs a monitoring agent, its planet is green, yellow or red at a glance, in two layers:
 
-  | You see | It means |
-  |---|---|
-  | Calm blue-green world, no ring | All is well |
-  | Amber sky and an amber beacon ring | Needs a look: the label says why ("⚠ drive 89% full") |
-  | Red pulsing sky, red ring with shockwaves, glowing fissures | Critical: act now. Fires mean it's overheating |
+  | | Green: Eden | Yellow: Drought | Red: Hellscape |
+  |---|---|---|---|
+  | **Land and sea**: storage, changes slowly (drives filling, drives wearing out) | lush green, blue sea | dry yellow land, murky sea | scorched earth, lava, a red sea |
+  | **Sky and clouds**: heat and memory, change fast (CPU/GPU temperature, RAM, fans) | clear blue, white cloud | amber haze, dust | burning red sky, smoke, embers |
 
-  Look closer and it shows what the machine is doing: **continents** are drives, settled from the centre as they fill; **sea level** is RAM; **spin** is CPU load; the **moon** is the GPU (glow = load, colour = temperature, arc = VRAM); **storms** are fans. Thresholds: CPU 80/89 °C, GPU 83/90 °C (hot spot and memory 95/105 °C), RAM 85/95%, drives 85/95% full, drive temperature near its own warning limit, drive life under 20/10%, and any fan that stops.
+  Cloud speed is how busy it is. The label names the reason when it isn't green ("⚠ drive 89% full"). Thresholds: CPU 80/89 °C, GPU 83/90 °C (hot spot and memory 95/105 °C), RAM 85/95%, drives 85/95% full, drive temperature near its own warning limit, drive life under 20/10%, and any fan that stops.
  Orrery looks for one when you add or rescan a server, or press **Connect health** to pick the agent and port yourself; it tests the connection on the spot and tells you why if it fails (usually a firewall).
 
   | Agent | Best for | Gives | Turn on |
