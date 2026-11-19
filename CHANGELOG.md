@@ -41,10 +41,7 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 First public release: automatic discovery with 46 service templates, the first-run setup wizard, the Setup screen, Orbit, Pulse, Vaults, Chronicle, Manifest, Broadcast and Network views.
 
-<<<<<<< HEAD
-[0.3.0]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.3.0
-=======
+[0.3.0]: https://github.com/prognar/Orrery/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.2.1
->>>>>>> main
 [0.2.0]: https://github.com/prognar/Orrery/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/prognar/Orrery/releases/tag/v0.1.0
