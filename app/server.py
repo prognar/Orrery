@@ -2,14 +2,36 @@
 """ORRERY — read-only Proxmox observatory. Zero dependencies.
 Proxies a whitelisted set of GET endpoints to the PVE API using a PVEAuditor token,
 and serves the static frontend."""
-import ipaddress, base64, json, os, re, socket, ssl, time, threading, urllib.request, urllib.parse
+import ipaddress, base64, json, os, re, socket, ssl, time, threading, urllib.error, urllib.request, urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
-CFG_PATH = os.environ.get("ORRERY_CFG", "/opt/orrery/config.json")
-CFG = json.load(open(CFG_PATH))
+# ---------------- configuration ----------------
+# data/config.json (bare-metal install) and/or environment variables (Docker). Environment wins.
+#   ORRERY_PVE_URL           https://192.168.1.10:8006
+#   ORRERY_PVE_TOKEN         orrery@pve!dash=00000000-0000-0000-0000-000000000000   (or the two below)
+#   ORRERY_PVE_TOKEN_ID      orrery@pve!dash
+#   ORRERY_PVE_TOKEN_SECRET  00000000-0000-0000-0000-000000000000
+#   ORRERY_PVE_NODE          optional: found automatically on a single-node host
+#   ORRERY_PORT              optional, default 8080
+#   ORRERY_DATA              where settings, keys and discovery are kept (default: next to config.json, or /data)
+DATA_DIR = os.environ.get("ORRERY_DATA") or (os.path.dirname(os.path.abspath(os.environ["ORRERY_CFG"])) if os.environ.get("ORRERY_CFG") else None)
+CFG_PATH = os.environ.get("ORRERY_CFG") or (os.path.join(DATA_DIR, "config.json") if DATA_DIR else "/opt/orrery/config.json")
+DATA_DIR = DATA_DIR or DATA_DIR
+try:
+    CFG = json.load(open(CFG_PATH))
+except FileNotFoundError:
+    CFG = {}
+except ValueError as e:
+    raise SystemExit(f"Orrery: {CFG_PATH} isn't valid JSON ({e}).")
+_env = {k: os.environ.get(v, "").strip() for k, v in (("pve", "ORRERY_PVE_URL"), ("tokenid", "ORRERY_PVE_TOKEN_ID"), ("secret", "ORRERY_PVE_TOKEN_SECRET"),
+                                                       ("node", "ORRERY_PVE_NODE"), ("port", "ORRERY_PORT"))}
+_tok = os.environ.get("ORRERY_PVE_TOKEN", "").strip()
+if "=" in _tok:                                     # the whole token as Proxmox prints it: user@realm!name=secret
+    _env["tokenid"], _env["secret"] = _tok.split("=", 1)
+CFG.update({k: v for k, v in _env.items() if v})
 try:   # credentials entered in the setup wizard live beside config.json and override it
-    with open(os.path.join(os.path.dirname(os.path.abspath(CFG_PATH)), "secrets.json")) as _f:
+    with open(os.path.join(DATA_DIR, "secrets.json")) as _f:
         for _k, _v in json.load(_f).items():
             if _k == "traits" and isinstance(_v, dict):
                 CFG.setdefault("traits", {}).update({k: v for k, v in _v.items() if v})
@@ -17,13 +39,45 @@ try:   # credentials entered in the setup wizard live beside config.json and ove
                 CFG[_k] = _v
 except (OSError, ValueError):
     pass
+_missing = [n for k, n in (("pve", "ORRERY_PVE_URL"), ("tokenid", "ORRERY_PVE_TOKEN (or _TOKEN_ID)"), ("secret", "ORRERY_PVE_TOKEN (or _TOKEN_SECRET)")) if not CFG.get(k)]
+if _missing:
+    raise SystemExit("Orrery needs to know how to reach Proxmox. Missing: " + ", ".join(_missing) + ".\n"
+                     "  Docker: set them as environment variables (see docker-compose.yml).\n"
+                     f"  Bare metal: put pve, tokenid and secret in {CFG_PATH}.\n"
+                     "  Token: pveum user token add orrery@pve dash --privsep 0   (role PVEAuditor on /)")
+if "://" not in CFG["pve"]:
+    CFG["pve"] = "https://" + CFG["pve"] + ("" if ":" in CFG["pve"] else ":8006")
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    _probe = os.path.join(DATA_DIR, ".write-test"); open(_probe, "w").close(); os.remove(_probe)
+except OSError as e:
+    raise SystemExit(f"Orrery can't write to its data folder {DATA_DIR} ({e.strerror}).\n"
+                     f"  Docker: use a named volume, or give the folder to the container user: chown -R 1000:1000 <folder>.")
 PVE = CFG["pve"].rstrip("/")            # e.g. https://192.168.1.10:8006
 PVE_HOST = urllib.parse.urlparse(PVE).hostname or ""
-NODE = CFG.get("node", "pve")
 AUTH = f"PVEAPIToken={CFG['tokenid']}={CFG['secret']}"
+CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
+
+
+def _find_node():
+    """Ask Proxmox which node we're looking at, so nobody has to type it. Prefers the node at the address we were given."""
+    try:
+        req = urllib.request.Request(f"{PVE}/api2/json/nodes", headers={"Authorization": AUTH})
+        with urllib.request.urlopen(req, timeout=8, context=CTX) as r:
+            nodes = json.loads(r.read()).get("data") or []
+    except urllib.error.HTTPError as e:
+        print(f"Orrery: Proxmox refused the API token (HTTP {e.code}). Check the token ID and secret, and that it has PVEAuditor on /.", flush=True)
+        return None
+    except Exception as e:
+        print(f"Orrery: can't reach Proxmox at {PVE} ({e}). Retrying on each request.", flush=True)
+        return None
+    online = [n for n in nodes if n.get("status") == "online"] or nodes
+    return (online[0].get("node") if online else None)
+
+
+NODE = CFG.get("node") or _find_node() or "pve"
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 PORT = int(CFG.get("port", 8080))
-CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 
 ALLOW = [re.compile(p) for p in (
     r"^cluster/(resources|tasks|status|backup|log)$",
@@ -1000,7 +1054,7 @@ def trait_img(kind, ident, size="thumbnail"):
         return r.read(), r.headers.get("Content-Type", "image/jpeg")
 
 import nextapi
-nextapi.init(pve_get, NODE, os.path.dirname(os.path.abspath(CFG_PATH)), CFG)
+nextapi.init(pve_get, NODE, DATA_DIR, CFG)
 import worlds
 def _all_guest_ips():
     """Every guest address, VMs included (from discovery), so guests are never offered as 'other servers'."""
@@ -1009,7 +1063,7 @@ def _all_guest_ips():
     if isinstance(li, dict) and "__error" not in li:
         m.update(li)
     return m
-worlds.init(os.path.dirname(os.path.abspath(CFG_PATH)), CFG, _all_guest_ips, nextapi.settings, nextapi.save)
+worlds.init(DATA_DIR, CFG, _all_guest_ips, nextapi.settings, nextapi.save)
 
 class H(BaseHTTPRequestHandler):
     server_version = "Orrery/1.0"
@@ -1106,4 +1160,6 @@ class H(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"Orrery {nextapi.VERSION} listening on :{PORT} → {PVE} ({NODE})", flush=True)
     _nv_start()   # keep per-device flow accounting running even with no page open
+    import signal
+    signal.signal(signal.SIGTERM, lambda *_: os._exit(0))      # stop promptly as a container's main process
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

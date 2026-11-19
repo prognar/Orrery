@@ -1,0 +1,9 @@
+.git
+.github
+data
+docs
+blender
+tools
+deploy
+*.md
+**/__pycache__
