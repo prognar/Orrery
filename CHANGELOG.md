@@ -2,7 +2,7 @@
 
 All notable changes to Orrery. Versions follow [semantic versioning](https://semver.org): while Orrery is pre-1.0, a minor bump (0.**x**.0) can add features or change settings, and a patch bump (0.x.**y**) only fixes things.
 
-## [0.3.0] - 2026-11-11
+## [0.3.0] - 2026-11-19
 
 ### Added
 - **Other servers as planets.** Machines that aren't the Proxmox host become planets beyond the orrery, with the services they run as moons. Orrery suggests them from the router's client list and Tailscale peers, fingerprints each one with the service templates, and you switch them on under Setup → Other servers (or add one by address). Types: Media server, NAS, Desktop / PC, Home hub, Server.
