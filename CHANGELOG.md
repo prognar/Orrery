@@ -2,6 +2,16 @@
 
 All notable changes to Orrery. Versions follow [semantic versioning](https://semver.org): while Orrery is pre-1.0, a minor bump (0.**x**.0) can add features or change settings, and a patch bump (0.x.**y**) only fixes things.
 
+## [0.2.1] - 2026-11-19
+
+### Added
+- **Runs in Docker.** `ghcr.io/prognar/orrery` (amd64 and arm64) plus a `docker-compose.yml`. Configure it with `ORRERY_PVE_URL` and `ORRERY_PVE_TOKEN`; settings live in the `/data` volume.
+- The Proxmox node is found automatically; `node` / `ORRERY_PVE_NODE` is only needed to pick one in a cluster.
+
+### Fixed
+- Clear messages instead of a crash when the Proxmox address or token is missing, or the data folder isn't writable.
+- Stops promptly when asked to (`docker stop`, `systemctl stop`).
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
@@ -20,5 +30,6 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 First public release: automatic discovery with 46 service templates, the first-run setup wizard, the Setup screen, Orbit, Pulse, Vaults, Chronicle, Manifest, Broadcast and Network views.
 
+[0.2.1]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/prognar/Orrery/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/prognar/Orrery/releases/tag/v0.1.0
