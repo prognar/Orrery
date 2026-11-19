@@ -195,6 +195,25 @@ Orrery recognises these by name, Proxmox tags, open ports and, most reliably, by
 
 ## Install
 
+### Docker (quickest)
+
+You need a read-only Proxmox API token first (step 1 below). Then:
+
+```sh
+docker run -d --name orrery --restart unless-stopped -p 8080:8080 \
+  -e ORRERY_PVE_URL=https://192.168.1.10:8006 \
+  -e ORRERY_PVE_TOKEN='orrery@pve!dash=00000000-0000-0000-0000-000000000000' \
+  -v orrery-data:/data \
+  ghcr.io/prognar/orrery:latest
+```
+
+Or use [`docker-compose.yml`](docker-compose.yml). Open `http://<docker host>:8080` and the setup wizard takes it from there. The node is found automatically; set `ORRERY_PVE_NODE` only if you want a particular one in a cluster. Keep `--restart unless-stopped`: Orrery restarts itself to pick up keys you add in the wizard. Settings live in the `/data` volume. If you bind-mount a folder there instead, give it to the container user first (`chown -R 1000:1000 <folder>`).
+
+The container needs to reach your Proxmox host and the guests on your LAN (the default bridge network does). Host temperatures, router clients and Tailscale suggestions come from optional host agents mounted at `/mnt/host-temps`.
+
+### LXC or bare metal
+
+
 > A one-line installer is on the way. Until then, setup takes about ten minutes by hand.
 
 **You need:** Proxmox VE 8 or 9, and a small Debian 12 container for Orrery (1 core, 512 MB, 4 GB disk is plenty) on the same network as your guests. The 3D view needs a browser with WebGL2; there's a 2D view otherwise.

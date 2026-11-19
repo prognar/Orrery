@@ -1,0 +1,20 @@
+# docker compose up -d   then open http://<this machine>:8080 and follow the setup wizard.
+services:
+  orrery:
+    image: ghcr.io/prognar/orrery:latest
+    # build: .                      # or build it yourself from this folder
+    container_name: orrery
+    restart: unless-stopped         # Orrery restarts itself to load new keys from the wizard
+    ports:
+      - "8080:8080"
+    environment:
+      # A read-only Proxmox API token (see README: "Create a read-only API token")
+      ORRERY_PVE_URL: "https://192.168.1.10:8006"
+      ORRERY_PVE_TOKEN: "orrery@pve!dash=00000000-0000-0000-0000-000000000000"
+      # ORRERY_PVE_NODE: "pve"      # only if the host has several nodes and you want a particular one
+    volumes:
+      - orrery-data:/data           # settings, service keys and discovery survive upgrades
+      # Optional host feeds (temperatures, router clients, Tailscale peers) if you run the host agents:
+      # - /run/orrery-temps:/mnt/host-temps:ro
+volumes:
+  orrery-data:
