@@ -16,6 +16,12 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 ### Changed
 - Setup's "Media world" switch is now the Other servers card. An existing off-host Plex is carried over as a Media server planet automatically.
+## [0.2.1] - 2026-11-19
+- **Runs in Docker.** `ghcr.io/prognar/orrery` (amd64 and arm64) plus a `docker-compose.yml`. Configure it with `ORRERY_PVE_URL` and `ORRERY_PVE_TOKEN`; settings live in the `/data` volume.
+- The Proxmox node is found automatically; `node` / `ORRERY_PVE_NODE` is only needed to pick one in a cluster.
+### Fixed
+- Clear messages instead of a crash when the Proxmox address or token is missing, or the data folder isn't writable.
+- Stops promptly when asked to (`docker stop`, `systemctl stop`).
 
 ## [0.2.0] - 2026-11-11
 
@@ -35,6 +41,10 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 First public release: automatic discovery with 46 service templates, the first-run setup wizard, the Setup screen, Orbit, Pulse, Vaults, Chronicle, Manifest, Broadcast and Network views.
 
+<<<<<<< HEAD
 [0.3.0]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.3.0
+=======
+[0.2.1]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.2.1
+>>>>>>> main
 [0.2.0]: https://github.com/prognar/Orrery/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/prognar/Orrery/releases/tag/v0.1.0
