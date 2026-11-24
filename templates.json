@@ -1271,6 +1271,265 @@
    }
   },
   {
+   "key": "synology",
+   "label": "Synology DSM",
+   "category": "storage",
+   "look": "vault",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "synology",
+     "diskstation",
+     "^ds\\d"
+    ],
+    "ports": [
+     5000,
+     5001
+    ],
+    "http": [
+     {
+      "port": 5000,
+      "path": "/",
+      "re": "Synology|DiskStation"
+     },
+     {
+      "port": 5001,
+      "path": "/",
+      "re": "Synology|DiskStation",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "unraid",
+   "label": "Unraid",
+   "category": "storage",
+   "look": "vault",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "unraid"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/login",
+      "re": "Unraid"
+     },
+     {
+      "port": 443,
+      "path": "/login",
+      "re": "Unraid",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "opnsense",
+   "label": "OPNsense",
+   "category": "network",
+   "look": "junction",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "opnsense",
+     "firewall"
+    ],
+    "http": [
+     {
+      "port": 443,
+      "path": "/",
+      "re": "OPNsense",
+      "scheme": "https"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "OPNsense"
+     }
+    ]
+   }
+  },
+  {
+   "key": "pfsense",
+   "label": "pfSense",
+   "category": "network",
+   "look": "junction",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "pfsense"
+    ],
+    "http": [
+     {
+      "port": 443,
+      "path": "/",
+      "re": "pfSense",
+      "scheme": "https"
+     },
+     {
+      "port": 80,
+      "path": "/",
+      "re": "pfSense"
+     }
+    ]
+   }
+  },
+  {
+   "key": "unifi",
+   "label": "UniFi Network",
+   "category": "network",
+   "look": "junction",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "unifi",
+     "udm",
+     "cloud-?key"
+    ],
+    "ports": [
+     8443
+    ],
+    "http": [
+     {
+      "port": 8443,
+      "path": "/",
+      "re": "UniFi",
+      "scheme": "https"
+     },
+     {
+      "port": 443,
+      "path": "/",
+      "re": "UniFi",
+      "scheme": "https"
+     }
+    ]
+   }
+  },
+  {
+   "key": "openwrt",
+   "label": "OpenWrt",
+   "category": "network",
+   "look": "junction",
+   "tier": "watch",
+   "trait": null,
+   "match": {
+    "names": [
+     "openwrt",
+     "^router"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/cgi-bin/luci",
+      "re": "LuCI|OpenWrt"
+     }
+    ]
+   }
+  },
+  {
+   "key": "blueiris",
+   "label": "Blue Iris",
+   "category": "home",
+   "look": "monitor",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "blue-?iris"
+    ],
+    "ports": [
+     81
+    ],
+    "http": [
+     {
+      "port": 81,
+      "path": "/",
+      "re": "Blue Iris"
+     }
+    ]
+   }
+  },
+  {
+   "key": "moonraker",
+   "label": "Klipper (Mainsail / Fluidd)",
+   "category": "dev",
+   "look": "cog",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "klipper",
+     "mainsail",
+     "fluidd",
+     "voron",
+     "printer"
+    ],
+    "ports": [
+     7125
+    ],
+    "http": [
+     {
+      "port": 7125,
+      "path": "/server/info",
+      "re": "klippy_state"
+     }
+    ]
+   }
+  },
+  {
+   "key": "octoprint",
+   "label": "OctoPrint",
+   "category": "dev",
+   "look": "cog",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "octo-?pi",
+     "octoprint"
+    ],
+    "http": [
+     {
+      "port": 80,
+      "path": "/",
+      "re": "<title>[^<]*OctoPrint"
+     },
+     {
+      "port": 5000,
+      "path": "/",
+      "re": "<title>[^<]*OctoPrint"
+     }
+    ]
+   }
+  },
+  {
+   "key": "minecraft",
+   "label": "Minecraft server",
+   "category": "games",
+   "look": "cartridge",
+   "tier": "active",
+   "trait": null,
+   "match": {
+    "names": [
+     "minecraft",
+     "^mc$",
+     "paper",
+     "spigot"
+    ],
+    "ports": [
+     25565
+    ]
+   }
+  },
+  {
    "key": "isponsorblocktv",
    "label": "iSponsorBlockTV",
    "category": "media",

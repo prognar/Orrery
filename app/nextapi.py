@@ -360,6 +360,17 @@ def post(path, headers, body):
         if not h: return 200, {"ok": False, "error": why}
         save({"worlds": {d["id"]: {"health": h}}})
         return 200, {"ok": True, "health": h}
+    if path == "/api/next/worlds/link":
+        try: d = json.loads(body or b"{}")
+        except ValueError: return 400, {"error": "bad json"}
+        if not isinstance(d, dict) or not d.get("id"): return 400, {"error": "id required"}
+        if d.get("kind") in ("auto", "off"):
+            worlds.save_secret(d["id"], None)
+            save({"worlds": {d["id"]: {"link": d["kind"]}}}); return 200, {"ok": True}
+        cfg, why = worlds.connect_link(d["id"], d.get("kind"), d.get("fields"))
+        if not cfg: return 200, {"ok": False, "error": why}
+        save({"worlds": {d["id"]: {"link": cfg}}})
+        return 200, {"ok": True}
     if path == "/api/next/worlds/scan":
         try: addr = (json.loads(body or b"{}").get("addr") or "").strip()
         except (ValueError, AttributeError): return 400, {"error": "bad json"}

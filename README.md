@@ -88,13 +88,35 @@ Everything the wizard sets lives on the **Setup** screen afterwards. Services st
 
 ## Other servers
 
-The orrery is your Proxmox host, and its brass instruments are the guests. Anything else on your network can join as a **planet** beyond it, with the services it runs as **moons**: the PC that runs Plex, a NAS, a Raspberry Pi running Home Assistant.
+The orrery is your Proxmox host, and its brass instruments are the guests. Anything else on your network can join as a **planet** beyond it: the PC that runs Plex, a NAS, the router, a Raspberry Pi running Pi-hole, a game server.
 
-- Orrery suggests machines from your router's client list and your Tailscale peers (when those feeds are available, see below), fingerprints what each one runs, and lists them under **Setup → Other servers**. You switch on the ones you want, or add one by address.
-- Give each a type: **Media server**, **NAS**, **Desktop / PC**, **Home hub** or **Server**. A media server running Plex is drawn as the big inhabited world, with streams orbiting and downloads spiralling in.
+- Orrery suggests machines from your router's client list and your Tailscale peers (when those feeds are available, see below), fingerprints what each one runs, suggests a preset, and lists them under **Setup → Other servers**. You switch on the ones you want, or add one by address.
 - The tether shows how Orrery reaches it: **purple over Tailscale**, **blue on your local network**, red when it stops answering.
+- **Click a planet** for its panel: status, what its preset reads, its services grouped (Streaming, Library automation, Downloads, Network...), and the machine's health. Services aren't drawn as moons; one that stops answering turns the planet amber. Click a service in Setup to stop watching it.
 - If Plex runs in a container on the Proxmox host itself, it's simply one of the instruments, and its streams show on that guest's card.
-- Click a service to hide or show it as a moon.
+
+### Presets
+
+A preset sets how a planet looks and what's checked, so you can tell what a machine is and whether it's fine from across the room.
+
+| Preset | Looks like | Checks | Reads |
+|---|---|---|---|
+| Desktop / gaming PC | a living world | temperatures, memory, drives, fans | a health agent (below) |
+| Laptop | a small living world | the same; grey and **asleep** when off, not an alarm | a health agent |
+| Server / Pi | a living world | the same; red when it stops answering | a health agent |
+| Media server | the ringed world (Plex: the big inhabited one) | streams, library, services | Plex |
+| NAS / storage | banded, a ring per pool filled as it fills | pool health and fill, alerts | TrueNAS API key, or drive fill from an agent |
+| Backup server | ice that melts as the last good backup gets old | each group's last backup (amber after 26 h, red after 3 days), datastore fill, failed tasks | Proxmox Backup Server token (DatastoreAudit) |
+| Router / firewall | a beacon with traffic orbiting it | internet up, latency and loss, DNS | nothing to set up |
+| DNS / ad-blocker | obsidian with an accretion disc | answers DNS, blocking on, % blocked | nothing for the DNS check; Pi-hole app password or AdGuard login for the rest |
+| Home hub | city lights; dead devices are dark districts | devices unavailable, low batteries, updates | Home Assistant long-lived token |
+| Cameras / NVR | an eye per camera | cameras online, detector speed, recordings disk | Frigate (automatic) |
+| Game server | a moon per player | players online | Minecraft (automatic) or any Steam query game |
+| AI / GPU box | a forge whose veins glow with GPU load | loaded models, GPU | Ollama (automatic) + an agent |
+| 3D printer | a ring being printed | state, progress, time left, errors; asleep when off | Klipper/Moonraker (automatic) or OctoPrint API key |
+
+Integrations without a key start by themselves when Orrery finds the service; the others have a **Set up** button with a test. Keys are stored in `secrets.json` (mode 600), never in settings.
+
 - **Living planets, Eden to Hellscape:** if the machine runs a monitoring agent, its planet is green, yellow or red at a glance, in two layers:
 
   | | Green: Eden | Yellow: Drought | Red: Hellscape |

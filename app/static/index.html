@@ -500,6 +500,7 @@ function drawOrbit(now){
     }
   });
   drawPlex(x,w,h,cx,cy,coreR,t);
+  if(globalThis.drawWorlds2d)drawWorlds2d(x,w,h,cx,cy,coreR,R,t);
   // particles
   const bm={};orb.bodies.forEach(b=>bm[b.g.id]=b);
   orb.parts=orb.parts.filter(p=>p.t<1&&bm[p.id]);
@@ -515,14 +516,16 @@ requestAnimationFrame(drawOrbit);
 orb.cv.addEventListener('mousemove',e=>{
   const r=orb.cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
   const tip=$('#tip');const pp=orb.plexPos;
+  const wh=globalThis.OP&&OP.hit2d(mx,my);if(wh){orb.hover='__w:'+wh.id;orb.cv.style.cursor='pointer';tip.innerHTML=OP.tip(wh);tip.style.display='block';
+    tip.style.left=Math.min(innerWidth-260,e.clientX+18)+'px';tip.style.top=Math.max(10,Math.min(innerHeight-tip.offsetHeight-10,e.clientY+14))+'px';return}
   if(pp&&Math.hypot(pp.x-mx,pp.y-my)<pp.r+14){orb.hover='__plex';orb.cv.style.cursor='pointer';
     const P=S.plex||{},ss=plexSessions(),ok=P.enabled&&!(P.identity||{}).__error;
     tip.innerHTML=`<h4>${esc(P.host||'plex')}</h4><div class="row"><span>${esc(P.addr||'')}</span><b class="${ok?'ok':'bad'}">${ok?'reachable':'unreachable'}</b></div>
-    <div class="row"><span>tailnet latency</span><b>${ok?(P.identity.__ms||0).toFixed(0)+' ms':'—'}</b></div>
+    <div class="row"><span>${((S.worlds||[]).find(v=>v.media)||{}).link==='lan'?'lan':'tailnet'} latency</span><b>${ok?(P.identity.__ms||0).toFixed(0)+' ms':'—'}</b></div>
     <div class="row"><span>streams</span><b>${ss.length}${ss.length?' · '+ss.filter(s=>s.dec==='tx').length+' transcoding':''}</b></div>
     <div class="row"><span>outbound · 30s avg</span><b>${fmtBps(plexOut())}</b></div>
     ${ss.slice(0,4).map(s=>`<div class="row"><span style="color:${s.dec==='tx'?C.ember:C.verd}">${esc(s.user)}</span><b>${esc(s.title).slice(0,26)}</b></div>`).join('')}
-    <div class="row"><span style="color:var(--faint)">click to open broadcast</span></div>`;
+    <div class="row"><span style="color:var(--faint)">click for details</span></div>`;
     tip.style.display='block';tip.style.left=Math.min(innerWidth-260,e.clientX+18)+'px';tip.style.top=Math.max(10,Math.min(innerHeight-260,e.clientY-120))+'px';return}
   const b=orb.bodies.find(b=>Math.hypot(b.x-mx,b.y-my)<b.size+8);orb.hover=b?b.g.id:null;orb.cv.style.cursor=b?'pointer':'crosshair';
   if(!b){tip.style.display='none';return}
@@ -536,7 +539,7 @@ orb.cv.addEventListener('mousemove',e=>{
   tip.style.display='block';tip.style.left=Math.min(innerWidth-230,e.clientX+18)+'px';tip.style.top=Math.min(innerHeight-200,e.clientY+14)+'px';
 });
 orb.cv.addEventListener('mouseleave',()=>{orb.hover=null;$('#tip').style.display='none'});
-orb.cv.addEventListener('click',()=>{if(orb.hover==='__plex'){$('#tip').style.display='none';return go('cast')}if(orb.hover)openDrawer(orb.hover)});
+orb.cv.addEventListener('click',()=>{if(orb.hover==='__plex'){$('#tip').style.display='none';const MW=(S.worlds||[]).find(v=>v.media);return MW?openPlanet(MW.id):go('cast')}if(orb.hover&&orb.hover.startsWith('__w:'))return openPlanet(orb.hover.slice(4));if(orb.hover)openDrawer(orb.hover)});
 
 /* ===================== PLEX ===================== */
 const fmtKbps=k=>!k?'—':k>=1000?(k/1000).toFixed(k>=10000?0:1)+' Mbps':Math.round(k)+' kbps';
@@ -585,8 +588,8 @@ async function pollPlex(){
 }
 const plexParts=[];
 function drawPlex(x,w,h,cx,cy,coreR,t){
-  const P=S.plex;if(!P||!P.enabled){orb.plexPos=null;return}
-  const ok=!(P.identity||{}).__error,ss=plexSessions();
+  const P=S.plex,MW=(S.worlds||[]).find(v=>v.media);if(!P||!P.enabled||P.guest||(S.worlds&&!(MW&&MW.enabled))){orb.plexPos=null;return}
+  const ok=!(P.identity||{}).__error,ss=plexSessions(),lan=MW&&MW.link==='lan',tcol=lan?'rgba(90,166,216,.55)':'rgba(157,134,214,.55)',mst=(MW&&MW.state)||{};
   const R=Math.min(w,h)/2-46;
   // place in the lower-right void, outside the engraved scale
   let px=Math.min(w-110,cx+R+150),py=Math.min(h-110,cy+R*.62);
@@ -595,12 +598,12 @@ function drawPlex(x,w,h,cx,cy,coreR,t){
   // tether: quadratic curve from the core edge
   const ang=Math.atan2(py-cy,px-cx),sx=cx+Math.cos(ang)*(coreR+40),sy=cy+Math.sin(ang)*(coreR+40);
   const mx=(sx+px)/2+40,my=(sy+py)/2-60;
-  x.save();x.setLineDash([3,6]);x.lineDashOffset=-t*12;x.strokeStyle=ok?'rgba(157,134,214,.55)':'rgba(209,77,90,.6)';x.lineWidth=1.2;
+  x.save();x.setLineDash([3,6]);x.lineDashOffset=-t*12;x.strokeStyle=ok?tcol:'rgba(209,77,90,.6)';x.lineWidth=1.2;
   x.beginPath();x.moveTo(sx,sy);x.quadraticCurveTo(mx,my,px,py);x.stroke();x.restore();
   // tether label
   const lx=(sx+2*mx+px)/4,ly=(sy+2*my+py)/4;
-  x.font='9px JetBrains Mono';x.textAlign='center';x.fillStyle=ok?C.ame:C.rose;
-  x.fillText(ok?`TAILSCALE · ${(P.identity.__ms||0).toFixed(0)} ms`:'TAILNET · NO SIGNAL',lx,ly-8);
+  x.font='9px JetBrains Mono';x.textAlign='center';x.fillStyle=ok?(lan?'#5aa6d8':C.ame):C.rose;
+  x.fillText(ok?`${lan?'LAN':'TAILSCALE'} · ${(P.identity.__ms||0).toFixed(0)} ms`:`${lan?'LAN':'TAILNET'} · NO SIGNAL`,lx,ly-8);
   // packets riding the tether: a trickle when idle, busier while streams are live
   if(ok){const rate=ss.length?Math.min(1,.06+ss.length*.12):.015;if(Math.random()<rate)plexParts.push({k:0,tether:1,s:.004+Math.random()*.004})}
   // the planet
@@ -623,6 +626,7 @@ function drawPlex(x,w,h,cx,cy,coreR,t){
   x.lineWidth=1;x.strokeStyle='rgba(240,208,138,.35)';x.beginPath();x.ellipse(0,0,pr*2.15,pr*.6,0,0,Math.PI);x.stroke();
   x.restore();
   if(hov){x.strokeStyle=C.hi;x.setLineDash([3,3]);x.beginPath();x.arc(px,py,pr*2.4,0,7);x.stroke();x.setLineDash([])}
+  if(mst.level){const sc=OP.LV_COL[mst.level];x.strokeStyle=sc;x.globalAlpha=mst.level===2?.55+.45*Math.abs(Math.sin(t*3)):.8;x.lineWidth=2;x.beginPath();x.arc(px,py,pr+3,0,7);x.stroke();x.lineWidth=1;x.globalAlpha=1}
   // acquisitions (qBittorrent): spiral inflow for downloads, polar jets for uploads
   const Qb=P.qbit&&P.qbit.enabled&&!P.qbit.__error?P.qbit:null,lv=v=>Math.max(0,(Math.min(1,Math.log10((v||0)+1)/8)-.45)/.55);
   const d2=Qb?lv(Qb.dl_speed):0,u2=Qb?lv(Qb.up_speed):0;
@@ -642,12 +646,12 @@ function drawPlex(x,w,h,cx,cy,coreR,t){
   });
   // labels
   x.textAlign='center';x.font='600 13px Cormorant Garamond';x.fillStyle=ok?C.hi:C.faint;x.fillText((P.host||'plex').toUpperCase(),px,py+pr*1.25+14);
-  x.font='9px JetBrains Mono';x.fillStyle=C.muted;x.fillText(ok?(ss.length?`${ss.length} stream${ss.length>1?'s':''} · ${fmtBps(plexOut())}`:'plex · idle'):'unreachable',px,py+pr*1.25+27);
+  x.font='9px JetBrains Mono';x.fillStyle=mst.level?OP.LV_COL[mst.level]:C.muted;x.fillText(mst.level&&(mst.why||[]).length?mst.why[0]:ok?(ss.length?`${ss.length} stream${ss.length>1?'s':''} · ${fmtBps(plexOut())}`:'plex · idle'):'unreachable',px,py+pr*1.25+27);
   const Wc=P.world&&P.world.d&&!P.world.__error?P.world.d:null;if(Wc){x.fillStyle=C.hi;x.fillText(`colonised ${(Wc.used/(Wc.used+Wc.avail)*100).toFixed(1)}%`,px,py+pr*1.25+39)}
   // particles: tether packets + broadcast sparks
   for(let i=plexParts.length-1;i>=0;i--){const p=plexParts[i];p.k+=p.s;if(p.k>=1){plexParts.splice(i,1);continue}
     let qx,qy;if(p.spiral){const r=p.r0+(pr*.95-p.r0)*Math.pow(p.k,1.4),a=p.a+p.k*4.4;qx=px+Math.cos(a)*r;qy=py+Math.sin(a)*r*.5;x.fillStyle=C.verd}
-    else if(p.tether){const k=p.k;qx=(1-k)*(1-k)*px+2*(1-k)*k*mx+k*k*sx;qy=(1-k)*(1-k)*py+2*(1-k)*k*my+k*k*sy;x.fillStyle=C.ame}
+    else if(p.tether){const k=p.k;qx=(1-k)*(1-k)*px+2*(1-k)*k*mx+k*k*sx;qy=(1-k)*(1-k)*py+2*(1-k)*k*my+k*k*sy;x.fillStyle=lan?'#5aa6d8':C.ame}
     else{const d=p.k*70;qx=p.from[0]+Math.cos(p.dir)*d;qy=p.from[1]+Math.sin(p.dir)*d;x.fillStyle=p.c}
     x.globalAlpha=Math.sin(p.k*Math.PI)*.9;x.beginPath();x.arc(qx,qy,1.3,0,7);x.fill()}
   x.globalAlpha=1;if(plexParts.length>400)plexParts.splice(0,plexParts.length-400);
@@ -854,7 +858,7 @@ $('#man-tbl').onclick=e=>{const th=e.target.closest('th');if(th){const k=th.data
 
 /* ===================== DRAWER ===================== */
 async function openDrawer(id){
-  const g=guests().find(x=>x.id===id);if(!g)return;S.selected=g;$('#drawer').classList.add('on');
+  const g=guests().find(x=>x.id===id);if(!g)return;S.selected=g;S.planet=null;$('#dr').dataset.sig='';$('#drawer').classList.add('on');
   const base=`nodes/${S.nodeName}/${g.type}/${g.vmid}`;
   $('#dr').innerHTML=`<div class="sub" style="margin:0">${g.type==='qemu'?'VIRTUAL MACHINE':'CONTAINER'} · ${g.vmid}</div><h2>${esc(g.name)}</h2>
    <div class="sub" id="dr-st"></div><div class="rings"><canvas id="dr-cpu"></canvas><canvas id="dr-mem"></canvas><canvas id="dr-disk"></canvas></div>
@@ -898,7 +902,7 @@ function updateDrawerLive(){
   $('#dr-cpu-v').textContent=fmtP((g.cpu||0)*100);$('#dr-mem-v').textContent=`${fmtB(g.mem)} / ${fmtB(g.maxmem)}`;
   $('#dr-net-v').textContent=`↓ ${fmtR(r.netin)}  ↑ ${fmtR(r.netout)}`;$('#dr-io-v').textContent=`r ${fmtR(r.diskread)}  w ${fmtR(r.diskwrite)}`;
 }
-function closeDrawer(){$('#drawer').classList.remove('on');S.selected=null}
+function closeDrawer(){$('#drawer').classList.remove('on');S.selected=null;S.planet=null}
 
 /* ===================== DRAWER · planet-specific panels ===================== */
 const TRAIT_KEYS=['pihole','netviz','abs','romm','pbs','immich','npm','guac','wiki','seerr','kuma','netdata','paperless','tracearr','orrery','ha'],TRAIT_DEF={pihole:'pihole',netviz:'netviz',abs:'audiobookshelf',romm:'romm',pbs:'pbs',immich:'immich',npm:'npm',guac:'guacamole',wiki:'wiki',seerr:'seerr',kuma:'uptime-kuma',netdata:'netdata',paperless:'paperless',tracearr:'tracearr',orrery:'orrery',ha:'HomeAssistant'};
@@ -1163,6 +1167,7 @@ setInterval(()=>{if(S.view==='net')pollNet()},5000);
 setInterval(()=>{if(S.view==='cast'&&plexSessions().length)renderCast()},1000);
 </script>
 <script src="/setup.js"></script>
+<script src="/planets.js"></script>
 <script src="/worlds.js"></script>
 <script src="/wizard.js"></script>
 </body>

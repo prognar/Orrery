@@ -2,6 +2,36 @@
 
 All notable changes to Orrery. Versions follow [semantic versioning](https://semver.org): while Orrery is pre-1.0, a minor bump (0.**x**.0) can add features or change settings, and a patch bump (0.x.**y**) only fixes things.
 
+## [0.4.0] - unreleased
+
+### Added
+- **Planet presets.** Every other server gets a preset that decides how its planet looks and what's checked. All of them share the same green / amber / red, Eden to Hellscape language; each adds the thing you'd want to know about that kind of machine:
+
+  | Preset | Looks like | Checks |
+  |---|---|---|
+  | Desktop / gaming PC, Laptop | a living world | temperatures, memory, drives, fans. Asleep (grey) when off, not an alarm |
+  | Server / Pi | a smaller living world | the same, and red when it stops answering |
+  | Media server | the ringed world | streams, library, services |
+  | NAS / storage | banded world, a ring per pool filled as the pool fills | pool health and fill, TrueNAS alerts (or drive fill from an agent) |
+  | Backup server | an ice world that melts as the last good backup gets old | age of each group's last backup, datastore fill, failed tasks (Proxmox Backup Server) |
+  | Router / firewall | a beacon with traffic orbiting it | is the internet up, latency and loss, the router's DNS |
+  | DNS / ad-blocker | an obsidian world with an accretion disc | does it answer DNS, is blocking on, how much is blocked (Pi-hole v5/v6, AdGuard Home) |
+  | Home hub | city lights; dead devices are dark districts | devices unavailable, low batteries, updates (Home Assistant) |
+  | Cameras / NVR | an eye per camera | cameras online, detector speed, recordings disk (Frigate) |
+  | Game server | a moon per player | players online (Minecraft, any Steam query game) |
+  | AI / GPU box | a forge whose veins glow with GPU load | loaded models (Ollama), GPU from an agent |
+  | 3D printer | a ring being printed | state, progress, time left, errors (Klipper/Moonraker, OctoPrint) |
+
+  Integrations that need no key (Frigate, Ollama, Moonraker, Minecraft) start on their own when the service is found; the rest are set up per server in Setup with a test button. Keys are kept in `secrets.json`, never in settings.
+- **A side panel for every planet.** Click a planet (in 3D or 2D) for its status, what its preset reads, its services grouped (Streaming, Requests, Library automation, Downloads, Network, Home...), and the machine's health. The media planet's panel links to Broadcast.
+- **The 2D map shows other servers** with their preset look, status colour, tether (purple Tailscale, blue LAN), label and hover card. The media planet's tether is blue when it's on the LAN.
+- Orrery suggests a preset for each machine it finds, and recognises Synology, Unraid, OPNsense, pfSense, UniFi, OpenWrt, Blue Iris, Klipper, OctoPrint and Minecraft.
+
+### Changed
+- **Services are no longer drawn as moons.** They're listed in the planet's panel; a service that stops answering turns the planet amber. Clicking a service in Setup now stops (or resumes) watching it.
+- Planets sit round the far side of the orrery instead of fanning towards the camera.
+- A machine that's off isn't polled for health until it answers again.
+
 ## [0.3.0] - 2026-11-19
 
 ### Added
@@ -16,6 +46,7 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 ### Changed
 - Setup's "Media world" switch is now the Other servers card. An existing off-host Plex is carried over as a Media server planet automatically.
+
 ## [0.2.1] - 2026-11-19
 - **Runs in Docker.** `ghcr.io/prognar/orrery` (amd64 and arm64) plus a `docker-compose.yml`. Configure it with `ORRERY_PVE_URL` and `ORRERY_PVE_TOKEN`; settings live in the `/data` volume.
 - The Proxmox node is found automatically; `node` / `ORRERY_PVE_NODE` is only needed to pick one in a cluster.
@@ -41,6 +72,7 @@ All notable changes to Orrery. Versions follow [semantic versioning](https://sem
 
 First public release: automatic discovery with 46 service templates, the first-run setup wizard, the Setup screen, Orbit, Pulse, Vaults, Chronicle, Manifest, Broadcast and Network views.
 
+[0.4.0]: https://github.com/prognar/Orrery/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/prognar/Orrery/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/prognar/Orrery/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/prognar/Orrery/compare/v0.1.0...v0.2.0

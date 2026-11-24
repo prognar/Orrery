@@ -437,12 +437,12 @@ export async function start(host, status = () => {}) {
         <div class="row"><span>viewer</span><b>${esc(x.user)}</b></div><div class="row"><span>device</span><b>${esc(x.device)} · ${x.local ? 'LAN' : 'WAN'}</b></div>
         <div class="row"><span>mode</span><b style="color:${x.dec === 'tx' ? C.ember : x.dec === 'ds' ? C.brass : C.verd}">${x.dec === 'tx' ? 'transcode' : x.dec === 'ds' ? 'direct stream' : 'direct play'}</b></div>
         <div class="row"><span>progress</span><b>${fmtMs(x.off)} / ${fmtMs(x.dur)}</b></div><div class="row"><span>measured</span><b>${fmtBps(x.act)}</b></div>`;
-    } else if (obj.userData.world !== undefined || obj.userData.wsvc) {
+    } else if (obj.userData.world !== undefined) {
       const h = worlds3.tip(obj); if (!h) return; tip.innerHTML = h;
     } else if (obj.userData.plex) {
       const P = S.plex || {}, ss = plexSessions(), ok = P.enabled && !(P.identity || {}).__error;
       tip.innerHTML = `<h4>${esc(P.host || 'plex')}</h4><div class="row"><span>${esc(P.addr || '')}</span><b class="${ok ? 'ok' : 'bad'}">${ok ? 'reachable' : 'unreachable'}</b></div>
-        <div class="row"><span>tailnet latency</span><b>${ok ? (P.identity.__ms || 0).toFixed(0) + ' ms' : '—'}</b></div>
+        <div class="row"><span>${((S.worlds || []).find(w => w.media) || {}).link === 'lan' ? 'lan' : 'tailnet'} latency</span><b>${ok ? (P.identity.__ms || 0).toFixed(0) + ' ms' : '—'}</b></div>
         <div class="row"><span>streams</span><b>${ss.length}${ss.length ? ' · ' + ss.filter(s => s.dec === 'tx').length + ' transcoding' : ''}</b></div>
         <div class="row"><span>outbound · 30s avg</span><b>${fmtBps(plexOut())}</b></div>
         ${(() => { const Q = P.qbit; if (!Q || !Q.enabled) return ''; if (Q.__error) return `<div class="row"><span>qbittorrent</span><b class="bad">${esc(Q.__error).slice(0, 40)}</b></div>`;
@@ -453,8 +453,11 @@ export async function start(host, status = () => {}) {
             + `<div class="row"><span>cpu · ram</span><b>${(W.cpu || 0).toFixed(0)}% · ${W.ram_used ? (W.ram_used / (W.ram_used + W.ram_free) * 100).toFixed(0) : '—'}%</b></div>`
             + `<div class="row"><span>disk writes</span><b>${fmtR((W.io_write || 0) * 1024)}</b></div>` })()}
         ${ss.slice(0, 4).map(s => `<div class="row"><span style="color:${s.dec === 'tx' ? C.ember : C.verd}">▶ ${esc(s.user)}</span><b>${esc(s.title).slice(0, 26)}</b></div>`).join('')}
+        ${(() => { const MW = (S.worlds || []).find(w => w.media); if (!MW) return ''; const on = MW.services.filter(s => s.on), dn = on.filter(s => s.up === false), st = MW.state || {};
+          return (st.level ? `<div class="row"><span>status</span><b style="color:${OP.LV_COL[st.level]}">${esc((st.why || [])[0] || '')}</b></div>` : '')
+            + `<div class="row"><span>services</span><b>${on.length}${dn.length ? ' · <span class="bad">' + dn.length + ' down</span>' : ' · all answering'}</b></div>` })()}
         ${plexExtra(P)}
-        <div class="row"><span style="color:var(--faint)">click to open broadcast</span></div>`;
+        <div class="row"><span style="color:var(--faint)">click for details</span></div>`;
     } else {
       const g = guests().find(x => x.id === obj.userData.gid); if (!g) return;
       const rt = S.rates[g.id] || {};
@@ -480,7 +483,8 @@ export async function start(host, status = () => {}) {
   el.addEventListener('pointerup', ev => {
     if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6 || !hover) return;
     tip.style.display = 'none';
-    if (hover.userData.world !== undefined || hover.userData.wsvc) { go('setup'); return }
+    if (hover.userData.world !== undefined) { openPlanet(hover.userData.world); return }
+    if (hover.userData.plex) { const MW = (S.worlds || []).find(w => w.media); if (MW) { openPlanet(MW.id); return } }
     if (hover.userData.plex || hover.userData.stream !== undefined) go('cast'); else openDrawer(hover.userData.gid);
   });
 
@@ -685,7 +689,7 @@ export async function start(host, status = () => {}) {
       plexHalo.scale.setScalar(7 + dIn * 3 + Math.max(0, flash) * 8);
     }
     traits.update(dt, t);
-    worlds3.update(dt, t, { mediaGroup: plexG, mediaWorld: showGiant ? MW : null, hover });
+    worlds3.update(dt, t, { hover });
     // particles → buffer
     let n2 = 0;
     for (let i = parts.length - 1; i >= 0; i--) {
