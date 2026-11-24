@@ -2,7 +2,7 @@
 
 All notable changes to Orrery. Versions follow [semantic versioning](https://semver.org): while Orrery is pre-1.0, a minor bump (0.**x**.0) can add features or change settings, and a patch bump (0.x.**y**) only fixes things.
 
-## [0.4.0] - unreleased
+## [0.4.0] - 2026-11-24
 
 ### Added
 - **Planet presets.** Every other server gets a preset that decides how its planet looks and what's checked. All of them share the same green / amber / red, Eden to Hellscape language; each adds the thing you'd want to know about that kind of machine:
