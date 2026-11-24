@@ -33,9 +33,11 @@ css.textContent = `
 document.head.appendChild(css);
 
 let W = null, busy = false, paused = false;
-async function poll() {
+// don't redraw the card under someone using it: an open dropdown would be swapped out and their pick lost
+const editing = () => { const a = document.activeElement, c = $('#worlds-card'); return !!(a && c && c.contains(a) && /^(SELECT|INPUT)$/.test(a.tagName)) };
+async function poll(force) {
   try { W = await fetch('/api/next/worlds').then(r => r.json()); S.worlds = W.worlds } catch (e) { return }
-  if (S.view === 'setup' && !paused) render();
+  if (S.view === 'setup' && !paused && (force === true || !editing())) render();
   if (globalThis.OP) OP.renderPanel();
 }
 poll(); setInterval(poll, 10000);
@@ -118,7 +120,7 @@ function render() {
 async function save(patch, note) {
   if (busy) return; busy = true;
   try { await globalThis.orrerySave(patch, note) } finally { busy = false }
-  await poll();
+  await poll(true);
 }
 const sid = n => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'server';
 
